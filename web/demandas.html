@@ -118,7 +118,15 @@
 
   const texto = (a, b) => String(a ?? "").localeCompare(String(b ?? ""), "pt-BR", { numeric: true, sensitivity: "base" });
   const nomePasta = (d) => (d.pasta_nome ?? d.cliente_nome ?? "(sem cliente)").replace(/\s-\s*[A-Z]{2,3}\s*$/, "");
-  const dataCurta = (v) => v ? new Date(v).toLocaleDateString("pt-BR", { timeZone: "America/Campo_Grande", day: "2-digit", month: "2-digit" }) : "";
+  // dd/mm; com o ano quando não for o ano corrente (ex.: 18/09/25)
+  const anoAtual = new Date().getFullYear();
+  const dataCurta = (v) => {
+    if (!v) return "";
+    const d = new Date(v);
+    const opc = { timeZone: "America/Campo_Grande", day: "2-digit", month: "2-digit" };
+    if (d.getFullYear() !== anoAtual) opc.year = "2-digit";
+    return d.toLocaleDateString("pt-BR", opc);
+  };
   const classeStatus = (s) => {
     const n = (s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
     return n.startsWith("conclu") ? "ok" : /suspen|cancel|nao exec/.test(n) ? "erro" : /valid|aguard|pend/.test(n) ? "alerta" : "";
@@ -241,12 +249,12 @@
     const det = d.detalhamento ? `<div class="rot">Detalhamento</div><div>${esc(d.detalhamento).slice(0, 1500)}</div>` : "";
     if (!ags) return det + `<div class="suave">Carregando agendas…</div>`;
     return det + `<div class="rot">Agendas (${ags.length})</div>` + (ags.length ? ags.map((a) => {
-      const fora = a.selecao === "nao_sincronizar" || a.situacao_agenda === "nao_executada";
+      const fora = a.selecao === "nao_sincronizar" || a.situacao_agenda === "nao_executada" || a.no_periodo === false;
       const ic = { realizada: "✓", agendada: "", nao_executada: "✕" }[a.situacao_agenda] ?? "";
       return `<div class="agenda ${fora ? "fora" : ""}">
         <span class="ic ${a.situacao_agenda}" title="${esc(a.status ?? "")}">${ic}</span>
         <span class="txt"><b>${dataCurta(a.data_agenda) || "sem data"}${a.consultor_nome ? " · " + esc(a.consultor_nome) : ""}</b>
-          <small>${esc(a.nome)}${a.periodo ? " · " + esc(a.periodo) : ""}</small></span>
+          <small>${esc(a.nome)}${a.periodo ? " · " + esc(a.periodo) : ""}${a.no_periodo === false ? " · antes da data de corte, fora da conta" : ""}</small></span>
         <span class="h">${a.minutos_agenda ? horas(a.minutos_agenda) : "—"}</span>
         <button class="pequeno" data-agenda="${a.id}" data-sel="${a.selecao === "nao_sincronizar" ? "sincronizar" : "nao_sincronizar"}"
           title="${a.selecao === "nao_sincronizar" ? "Voltar a contar esta agenda" : "Não contar esta agenda nas horas"}">${a.selecao === "nao_sincronizar" ? "Contar" : "Não contar"}</button>

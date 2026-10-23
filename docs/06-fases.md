@@ -31,6 +31,7 @@ Roteiro de implantação: `docs/08-implantacao.md`. Telas: https://rodrigo-reis-
 - [x] Sincronização de tudo das listas marcadas, carga desde 01/01/2026 por lista
 - [x] Horas por agenda (estimativa → Período com almoço); realizadas × agendadas × planejadas
 - [x] Tela **Demandas**: Cliente → Lista → Demanda → Agendas, escolha Sincronizar/Não (em lote por lista) e "não contar" por agenda
+- [x] Ajustes após comparação com o ClickUp (Inovvati): junção de repetidos, mães que faltam, corte pela data da agenda (migração 0005, D38–D40)
 - [ ] Publicar e validar com dados reais (carga completa, conferir horas de 3 demandas contra o ClickUp)
 - [ ] **Kanban** espelhando o status do ClickUp, filtros por consultor, cliente e gerente
 - [ ] **Painel de horas** por consultor × cliente × mês desde 01/01/2026 (`vw_horas_mes`), realizadas × agendadas

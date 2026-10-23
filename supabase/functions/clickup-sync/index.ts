@@ -147,6 +147,29 @@ async function sincronizar(banco: Banco, logId: number, tipo: string) {
         avisos.push(`Carga em andamento: faltam ${pendentes.length - feitas} lista(s), continua na próxima varredura`);
       }
 
+      // 3b. Tarefas-mãe que faltam (não mudaram desde o corte, então a busca por alteração não trouxe).
+      //     Busca uma a uma, subindo até o topo; a que não existir/não puder ser lida fica 1 dia sem tentar (D39).
+      const lerIds = (r: unknown[]) => (r ?? []).map((x) => typeof x === "string" ? x : String(Object.values(x as object)[0]));
+      for (let rodada = 0; rodada < 6 && Date.now() - inicioExecucao < 120_000; rodada++) {
+        const faltam = lerIds(await rpc<unknown[]>(banco, "pais_faltando", { p_origem: "clickup", p_limite: 40 }));
+        if (!faltam.length) break;
+        const achadas: any[] = [];
+        for (const id of faltam) {
+          try {
+            achadas.push(await cliente.tarefa(id));
+          } catch (e) {
+            if (!(e instanceof ErroClickUp && (e.status === 404 || e.status === 403))) throw e;
+          }
+        }
+        if (achadas.length) await gravar(achadas);
+        const resto = new Set(lerIds(await rpc<unknown[]>(banco, "pais_faltando", { p_origem: "clickup", p_limite: 1000 })));
+        const ausentes = faltam.filter((id) => resto.has(id));
+        if (ausentes.length) {
+          await rpc(banco, "registrar_tarefas_ausentes", { p_origem: "clickup", p_ids: ausentes, p_motivo: "não encontrada ou sem acesso" });
+        }
+        parametros.maes_buscadas = Number(parametros.maes_buscadas ?? 0) + achadas.length;
+      }
+
       // 4. Registros de tempo (cronômetro do ClickUp; aparece à parte das horas das agendas)
       const filtros = await rpc<{ usuarios: string[] }>(banco, "filtros_sincronizacao");
       if (filtros.usuarios.length) {

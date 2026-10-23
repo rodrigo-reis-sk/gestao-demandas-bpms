@@ -11,8 +11,9 @@ for f in "$DIR/00_supabase_simulado.sql" \
          "$RAIZ/migrations/0002_sincronizacao.sql" \
          "$RAIZ/migrations/0003_listas_e_estrutura.sql" \
          "$RAIZ/migrations/0004_demandas_e_agendas.sql" \
+         "$RAIZ/migrations/0005_ajustes_hierarquia.sql" \
          "$RAIZ/seed.sql" "$RAIZ/seed.sql" \
-         "$DIR/99_testes.sql" "$DIR/99_testes_fase1.sql" "$DIR/99_testes_0003.sql" "$DIR/99_testes_0004.sql"; do
+         "$DIR/99_testes.sql" "$DIR/99_testes_fase1.sql" "$DIR/99_testes_0003.sql" "$DIR/99_testes_0004.sql" "$DIR/99_testes_0005.sql"; do
   echo "### $(basename "$f")"
   (cd "$DIR" && psql -q -v ON_ERROR_STOP=1 -d teste_bpms -f "$f")
 done
