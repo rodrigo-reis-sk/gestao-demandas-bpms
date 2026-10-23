@@ -1,0 +1,77 @@
+/* Estilo único das telas de gestão. Tema claro e escuro (segue o sistema). */
+:root {
+  --fundo: #f4f6f9; --cartao: #ffffff; --texto: #1f2933; --suave: #607080; --borda: #dde3ea;
+  --primaria: #0b6bcb; --primaria-texto: #ffffff; --ok: #1a7f37; --alerta: #b45309; --erro: #c62828;
+  --destaque: #fff7e0; --raio: 8px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fundo: #12161c; --cartao: #1b2129; --texto: #e6eaef; --suave: #93a1b0; --borda: #2c3540;
+    --primaria: #4d9de0; --primaria-texto: #0b1118; --ok: #4cc06a; --alerta: #e0a43a; --erro: #ef6b6b;
+    --destaque: #2d2614;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--fundo); color: var(--texto); }
+a { color: var(--primaria); }
+h1 { font-size: 1.35rem; margin: 0 0 4px; }
+h2 { font-size: 1.05rem; margin: 0 0 10px; }
+.sub { color: var(--suave); margin: 0 0 16px; font-size: .92rem; }
+
+/* Menu */
+.topo { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; padding: 8px 16px; background: var(--cartao); border-bottom: 1px solid var(--borda); }
+.topo .marca { font-weight: 700; margin-right: 12px; }
+.topo a { text-decoration: none; color: var(--texto); padding: 6px 10px; border-radius: var(--raio); }
+.topo a.ativo, .topo a:hover { background: var(--fundo); }
+.topo .direita { margin-left: auto; color: var(--suave); font-size: .85rem; display: flex; gap: 8px; align-items: center; }
+.contador { display: inline-block; min-width: 20px; padding: 0 6px; border-radius: 10px; background: var(--alerta); color: #fff; font-size: .75rem; text-align: center; margin-left: 4px; }
+
+main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 48px; }
+.cartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: 16px; margin-bottom: 16px; }
+.grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.numero { font-size: 1.9rem; font-weight: 700; }
+
+/* Formulários e botões */
+label { display: block; font-size: .85rem; color: var(--suave); margin: 10px 0 4px; }
+input, select { font: inherit; padding: 7px 9px; border: 1px solid var(--borda); border-radius: 6px; background: var(--cartao); color: var(--texto); max-width: 100%; }
+input[type=text], input[type=email], input[type=password] { width: 100%; }
+button, .botao { font: inherit; cursor: pointer; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--borda); background: var(--cartao); color: var(--texto); text-decoration: none; display: inline-block; }
+button.primario, .botao.primario { background: var(--primaria); color: var(--primaria-texto); border-color: var(--primaria); }
+button:disabled { opacity: .55; cursor: default; }
+button.pequeno { padding: 3px 9px; font-size: .85rem; }
+.acoes { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* Tabelas */
+.tabela-rolagem { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--borda); vertical-align: middle; }
+th { color: var(--suave); font-weight: 600; font-size: .8rem; text-transform: uppercase; letter-spacing: .02em; }
+tr.destaque td { background: var(--destaque); }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Selos */
+.selo { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: .78rem; border: 1px solid var(--borda); white-space: nowrap; }
+.selo.ok { color: var(--ok); border-color: var(--ok); }
+.selo.alerta { color: var(--alerta); border-color: var(--alerta); }
+.selo.erro { color: var(--erro); border-color: var(--erro); }
+.suave { color: var(--suave); }
+
+/* Avisos */
+#aviso { position: fixed; right: 16px; bottom: 16px; max-width: 420px; z-index: 10; }
+#aviso div { background: var(--cartao); border: 1px solid var(--borda); border-left: 4px solid var(--primaria); padding: 10px 14px; border-radius: 6px; margin-top: 8px; box-shadow: 0 4px 14px rgba(0,0,0,.15); }
+#aviso div.erro { border-left-color: var(--erro); }
+#aviso div.ok { border-left-color: var(--ok); }
+
+/* Login */
+.login { max-width: 360px; margin: 10vh auto; }
+
+/* Chave liga/desliga */
+.chave { position: relative; display: inline-block; width: 38px; height: 22px; margin: 0; }
+.chave input { opacity: 0; width: 0; height: 0; }
+.chave span { position: absolute; inset: 0; background: var(--borda); border-radius: 22px; transition: .15s; cursor: pointer; }
+.chave span::before { content: ""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .15s; }
+.chave input:checked + span { background: var(--ok); }
+.chave input:checked + span::before { transform: translateX(16px); }
+
+details summary { cursor: pointer; color: var(--suave); }
+pre { white-space: pre-wrap; word-break: break-word; font-size: .8rem; background: var(--fundo); padding: 8px; border-radius: 6px; }

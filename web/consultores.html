@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Consultores · Gestão BP-MS</title>
+  <link rel="stylesheet" href="assets/estilo.css">
+  <script src="config.js"></script>
+</head>
+<body>
+<main>
+  <h1>Consultores</h1>
+  <p class="sub">Marque quem entra na sincronização. Uma tarefa só entra se o consultor <b>e</b> a lista estiverem marcados.
+    As pessoas novas do ClickUp aparecem aqui sozinhas (desmarcadas), ligadas pelo e-mail.</p>
+
+  <div class="cartao">
+    <div class="acoes" style="margin-bottom:10px">
+      <input type="text" id="busca" placeholder="Buscar por nome ou e-mail" style="max-width:280px">
+      <select id="filtro">
+        <option value="ativos">Ativos</option>
+        <option value="sincronizando">Sincronizando</option>
+        <option value="todos">Todos</option>
+      </select>
+      <span class="suave" id="resumo"></span>
+    </div>
+    <div class="tabela-rolagem"><table id="tabela"></table></div>
+  </div>
+</main>
+<script type="module">
+  import { sb, esc, $, exigirLogin, montarMenu, aviso, dataHora } from "./assets/comum.js";
+
+  const { usuario } = await exigirLogin();
+  await montarMenu(usuario);
+
+  const PAPEIS = { consultor: "Consultor", desenvolvedor: "Desenvolvedor", gerente_projetos: "Gerente de projetos" };
+  let consultores = [];
+
+  async function carregar() {
+    const { data, error } = await sb.from("consultores").select("*").order("nome");
+    if (error) return aviso(error.message, "erro");
+    consultores = data ?? [];
+    desenhar();
+  }
+
+  function desenhar() {
+    const busca = $("#busca").value.trim().toLowerCase();
+    const filtro = $("#filtro").value;
+    const lista = consultores.filter((c) =>
+      (filtro === "todos" || (filtro === "ativos" ? c.ativo : c.sincronizar)) &&
+      (!busca || `${c.nome} ${c.email ?? ""} ${c.nome_externo ?? ""}`.toLowerCase().includes(busca)));
+    $("#resumo").textContent = `${consultores.filter((c) => c.sincronizar).length} sincronizando de ${consultores.length}`;
+
+    $("#tabela").innerHTML = `<tr><th>Nome</th><th>E-mail</th><th>Papel</th><th>No ClickUp</th><th>Sincronizar</th><th>Ativo</th></tr>` +
+      lista.map((c) => `<tr>
+        <td>${esc(c.nome)}${c.nome_externo && c.nome_externo !== c.nome ? `<br><span class="suave">${esc(c.nome_externo)}</span>` : ""}</td>
+        <td>${esc(c.email ?? "—")}</td>
+        <td><select data-id="${c.id}" data-campo="papel">${Object.entries(PAPEIS).map(([v, t]) =>
+          `<option value="${v}" ${c.papel === v ? "selected" : ""}>${t}</option>`).join("")}</select></td>
+        <td>${c.id_externo ? '<span class="selo ok">vinculado</span>'
+          : `<span class="selo alerta" title="Ainda não achado pelo e-mail na sincronização de membros">não vinculado</span>`}</td>
+        <td><label class="chave" title="${c.sincronizar_desde ? "desde " + dataHora(c.sincronizar_desde) : ""}">
+          <input type="checkbox" data-id="${c.id}" data-campo="sincronizar" ${c.sincronizar ? "checked" : ""}><span></span></label></td>
+        <td><label class="chave"><input type="checkbox" data-id="${c.id}" data-campo="ativo" ${c.ativo ? "checked" : ""}><span></span></label></td>
+      </tr>`).join("");
+  }
+
+  // Grava na hora em que muda (o RLS só deixa gestor alterar).
+  $("#tabela").addEventListener("change", async (ev) => {
+    const el = ev.target;
+    if (!el.dataset.campo) return;
+    const valor = el.type === "checkbox" ? el.checked : el.value;
+    const { error } = await sb.from("consultores").update({ [el.dataset.campo]: valor }).eq("id", el.dataset.id);
+    if (error) { aviso(error.message, "erro"); return carregar(); }
+    const c = consultores.find((x) => x.id === el.dataset.id);
+    c[el.dataset.campo] = valor;
+    if (el.dataset.campo === "sincronizar" && valor) {
+      aviso(`${c.nome} marcado. A próxima sincronização traz as tarefas dos últimos 90 dias.`, "ok");
+    }
+    desenhar();
+  });
+  $("#busca").oninput = desenhar;
+  $("#filtro").onchange = desenhar;
+
+  await carregar();
+</script>
+</body>
+</html>

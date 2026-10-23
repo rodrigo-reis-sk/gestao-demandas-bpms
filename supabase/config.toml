@@ -1,0 +1,18 @@
+# Configuração do Supabase CLI (npx supabase ...). Ver docs/08-implantacao.md.
+# O project_id aqui é só um nome local; o projeto real é escolhido no "supabase link".
+project_id = "gestao-demandas-bpms"
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+# As três funções conferem o acesso por conta própria (login do gestor, chave do
+# agendamento ou assinatura do webhook). Por isso a checagem automática de JWT fica desligada.
+[functions.clickup-conectar]
+verify_jwt = false
+
+[functions.clickup-sync]
+verify_jwt = false
+
+[functions.clickup-webhook]
+verify_jwt = false

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Entrar · Gestão BP-MS</title>
+  <link rel="stylesheet" href="assets/estilo.css">
+  <script src="config.js"></script>
+</head>
+<body>
+<main>
+  <form class="cartao login" id="form">
+    <h1>Gestão BP-MS</h1>
+    <p class="sub">Entre com o mesmo e-mail que você usa no ClickUp.</p>
+    <label for="email">E-mail</label>
+    <input type="email" id="email" autocomplete="username" required>
+    <label for="senha">Senha</label>
+    <input type="password" id="senha" autocomplete="current-password" required>
+    <p class="acoes" style="margin-top:16px">
+      <button class="primario" type="submit" id="entrar">Entrar</button>
+    </p>
+    <p class="suave" style="font-size:.85rem">Sem acesso ou esqueceu a senha? Fale com o administrador do sistema.</p>
+  </form>
+</main>
+<script type="module">
+  import { sb, aviso, $ } from "./assets/comum.js";
+
+  const volta = new URLSearchParams(location.search).get("volta") || "index.html";
+  // só volta para páginas daqui (evita redirecionar para fora)
+  const destino = /^[\w-]+\.html(\?.*)?$/.test(volta) ? volta : "index.html";
+
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) location.href = destino;
+
+  $("#form").onsubmit = async (ev) => {
+    ev.preventDefault();
+    $("#entrar").disabled = true;
+    const { error } = await sb.auth.signInWithPassword({ email: $("#email").value.trim(), password: $("#senha").value });
+    $("#entrar").disabled = false;
+    if (error) return aviso(error.message === "Invalid login credentials" ? "E-mail ou senha incorretos." : error.message, "erro");
+    location.href = destino;
+  };
+</script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+# Segredos
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Supabase CLI
+supabase/.branches/
+supabase/.temp/
+
+# Node / build
+node_modules/
+dist/
+.vite/
+
+# Python (referência)
+__pycache__/
+*.pyc
+membros_cache.json
+referencia/**/dados/
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Saída temporária dos testes
+supabase/testes/.saida_tarefa.json

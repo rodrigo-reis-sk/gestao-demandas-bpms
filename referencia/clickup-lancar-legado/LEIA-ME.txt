@@ -1,0 +1,23 @@
+LANÇAR TAREFA NO CLICKUP — BP-MS (só esta tela da Central)
+
+Cada pessoa usa o PRÓPRIO token do ClickUp: as tarefas aparecem criadas por ela,
+e ela só alcança o que o usuário dela enxerga no ClickUp. Nenhuma senha vem no pacote.
+
+INSTALAÇÃO (uma vez)
+1. Instale o Python (https://www.python.org/downloads/) marcando "Add python.exe to PATH".
+2. Copie esta pasta para C:\Lancar_ClickUp_BP-MS (ou outro lugar fixo).
+3. Dê dois cliques em Instalar.bat.
+4. Gere o token pessoal no ClickUp:
+   avatar (canto inferior esquerdo) > Settings > Apps (ou "ClickUp API") > API Token >
+   Generate > Copy. Começa com "pk_". Não envie o token por e-mail/WhatsApp.
+5. Dê dois cliques em Configurar_Token_ClickUp.bat, cole o token e clique em Gravar.
+   A janela confirma com o seu nome de usuário do ClickUp.
+
+USO
+- Dê dois cliques em Abrir_Lancar_ClickUp.vbs. O navegador abre em http://127.0.0.1:8766/lancar.html
+- Na 1ª vez, clique no botão de atualizar a lista de membros (ao lado do Responsável).
+- Dica: crie um atalho do .vbs na Área de Trabalho (ícone: central\web\assets\icones\central.ico).
+
+PROBLEMAS
+- "Token do ClickUp não configurado": rode de novo Configurar_Token_ClickUp.bat.
+- Token vazou ou trocou: no ClickUp, API Token > Regenerate, e grave o novo pelo .bat.

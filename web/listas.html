@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Listas · Gestão BP-MS</title>
+  <link rel="stylesheet" href="assets/estilo.css">
+  <script src="config.js"></script>
+</head>
+<body>
+<main>
+  <h1>Listas do ClickUp</h1>
+  <p class="sub">A sincronização descobre todas as listas do espaço PMO BP-MS. Lista nova entra <b>a analisar</b> e não
+    sincroniza até você decidir. Listas encerradas (nome com "Z" ou "Concluída") entram como não sincronizar.</p>
+
+  <div class="cartao">
+    <div class="acoes" style="margin-bottom:10px">
+      <input type="text" id="busca" placeholder="Buscar cliente, pasta, lista ou FAP" style="max-width:280px">
+      <select id="filtro">
+        <option value="a_analisar">A analisar</option>
+        <option value="sincronizar">Sincronizando</option>
+        <option value="nao_sincronizar">Não sincronizar</option>
+        <option value="todas">Todas</option>
+      </select>
+      <label style="margin:0;display:flex;gap:6px;align-items:center"><input type="checkbox" id="encerradas"> mostrar encerradas</label>
+      <span class="suave" id="resumo"></span>
+    </div>
+    <div class="acoes" style="margin-bottom:10px">
+      <span class="suave">Selecionadas:</span>
+      <button class="pequeno" data-lote="sincronizar">Sincronizar</button>
+      <button class="pequeno" data-lote="nao_sincronizar">Não sincronizar</button>
+      <button class="pequeno" data-lote="a_analisar">Voltar para a analisar</button>
+    </div>
+    <div class="tabela-rolagem"><table id="tabela"></table></div>
+  </div>
+</main>
+<script type="module">
+  import { sb, esc, $, exigirLogin, montarMenu, atualizarContadores, aviso, dataHora } from "./assets/comum.js";
+
+  const { usuario } = await exigirLogin();
+  await montarMenu(usuario);
+
+  const SITUACAO = {
+    a_analisar: ['<span class="selo alerta">a analisar</span>', 0],
+    sincronizar: ['<span class="selo ok">sincronizando</span>', 1],
+    nao_sincronizar: ['<span class="selo">não sincronizar</span>', 2],
+  };
+  let listas = [], clientes = [];
+
+  async function carregar() {
+    const [l, c] = await Promise.all([
+      sb.from("clientes_faps").select("*").order("descoberta_em", { ascending: false }),
+      sb.from("clientes").select("id, nome").order("nome"),
+    ]);
+    if (l.error) return aviso(l.error.message, "erro");
+    listas = l.data ?? [];
+    clientes = c.data ?? [];
+    desenhar();
+    atualizarContadores();
+  }
+
+  const nomeCliente = (id) => clientes.find((c) => c.id === id)?.nome ?? "";
+
+  function desenhar() {
+    const busca = $("#busca").value.trim().toLowerCase();
+    const filtro = $("#filtro").value;
+    const mostrarEncerradas = $("#encerradas").checked;
+    const vis = listas
+      .filter((f) => filtro === "todas" || f.situacao_sincronizacao === filtro)
+      .filter((f) => mostrarEncerradas || f.ativa || f.situacao_sincronizacao === "sincronizar")
+      .filter((f) => !busca || [nomeCliente(f.cliente_id), f.pasta_nome, f.nome_lista, f.fap].join(" ").toLowerCase().includes(busca))
+      .sort((a, b) => SITUACAO[a.situacao_sincronizacao][1] - SITUACAO[b.situacao_sincronizacao][1]
+        || nomeCliente(a.cliente_id).localeCompare(nomeCliente(b.cliente_id)) || (a.nome_lista ?? "").localeCompare(b.nome_lista ?? ""));
+
+    const qtd = (s) => listas.filter((f) => f.situacao_sincronizacao === s).length;
+    $("#resumo").textContent = `${qtd("a_analisar")} a analisar · ${qtd("sincronizar")} sincronizando · ${qtd("nao_sincronizar")} não sincronizar`;
+
+    const opcoesCliente = (sel) => `<option value="">(sem cliente)</option>` +
+      clientes.map((c) => `<option value="${c.id}" ${c.id === sel ? "selected" : ""}>${esc(c.nome)}</option>`).join("");
+
+    $("#tabela").innerHTML = `<tr><th><input type="checkbox" id="todas"></th><th>Cliente</th><th>Pasta / lista no ClickUp</th>
+      <th>FAP</th><th>Situação</th><th>Ações</th></tr>` +
+      (vis.length ? vis.map((f) => `<tr class="${f.situacao_sincronizacao === "a_analisar" ? "destaque" : ""}">
+        <td><input type="checkbox" class="sel" value="${f.id}"></td>
+        <td><select data-cliente="${f.id}">${opcoesCliente(f.cliente_id)}</select></td>
+        <td>${f.lista_id_externo ? `${esc(f.pasta_nome ?? "(sem pasta)")} / <b>${esc(f.nome_lista)}</b>`
+              : '<span class="suave">FAP do cadastro, ainda não encontrada no ClickUp</span>'}
+            ${f.ativa ? "" : ' <span class="selo">encerrada</span>'}
+            <br><span class="suave" style="font-size:.8rem">descoberta ${dataHora(f.descoberta_em)}${f.analisada_em ? " · decidida " + dataHora(f.analisada_em) : ""}</span></td>
+        <td>${esc(f.fap ?? "—")}</td>
+        <td>${SITUACAO[f.situacao_sincronizacao][0]}</td>
+        <td><div class="acoes">
+          ${f.situacao_sincronizacao !== "sincronizar" ? `<button class="pequeno" data-id="${f.id}" data-sit="sincronizar">Sincronizar</button>` : ""}
+          ${f.situacao_sincronizacao !== "nao_sincronizar" ? `<button class="pequeno" data-id="${f.id}" data-sit="nao_sincronizar">Não sincronizar</button>` : ""}
+        </div></td></tr>`).join("")
+      : `<tr><td colspan="6" class="suave">Nada por aqui.</td></tr>`);
+
+    $("#todas").onchange = (e) => document.querySelectorAll(".sel").forEach((c) => (c.checked = e.target.checked));
+  }
+
+  async function definirSituacao(ids, situacao) {
+    if (!ids.length) return aviso("Selecione ao menos uma lista.");
+    const { error } = await sb.from("clientes_faps").update({ situacao_sincronizacao: situacao }).in("id", ids);
+    if (error) return aviso(error.message, "erro");
+    aviso(situacao === "sincronizar"
+      ? `${ids.length} lista(s) marcada(s). A próxima sincronização traz as tarefas dos últimos 90 dias.`
+      : `${ids.length} lista(s) atualizada(s).`, "ok");
+    carregar();
+  }
+
+  $("#tabela").addEventListener("click", (ev) => {
+    const b = ev.target.closest("button[data-sit]");
+    if (b) definirSituacao([b.dataset.id], b.dataset.sit);
+  });
+  $("#tabela").addEventListener("change", async (ev) => {
+    const s = ev.target.closest("select[data-cliente]");
+    if (!s) return;
+    const { error } = await sb.from("clientes_faps").update({ cliente_id: s.value || null }).eq("id", s.dataset.cliente);
+    error ? aviso(error.message, "erro") : aviso("Cliente da lista atualizado.", "ok");
+    listas.find((f) => f.id === s.dataset.cliente).cliente_id = s.value || null;
+  });
+  document.querySelectorAll("[data-lote]").forEach((b) => b.onclick = () =>
+    definirSituacao([...document.querySelectorAll(".sel:checked")].map((c) => c.value), b.dataset.lote));
+  $("#busca").oninput = desenhar;
+  $("#filtro").onchange = desenhar;
+  $("#encerradas").onchange = desenhar;
+
+  await carregar();
+</script>
+</body>
+</html>

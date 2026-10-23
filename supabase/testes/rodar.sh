@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Testa as migrações e o seed num Postgres 16 local (simula o mínimo do Supabase).
+# Uso: bash supabase/testes/rodar.sh        (variáveis PGHOST/PGUSER/PGPASSWORD se precisar)
+# Cria e apaga o banco "teste_bpms". Nunca rode contra o Supabase de produção.
+set -e
+DIR="$(cd "$(dirname "$0")" && pwd)"
+RAIZ="$DIR/.."
+dropdb --if-exists teste_bpms && createdb teste_bpms
+for f in "$DIR/00_supabase_simulado.sql" \
+         "$RAIZ/migrations/0001_estrutura_inicial.sql" \
+         "$RAIZ/migrations/0002_sincronizacao.sql" \
+         "$RAIZ/seed.sql" "$RAIZ/seed.sql" \
+         "$DIR/99_testes.sql" "$DIR/99_testes_fase1.sql"; do
+  echo "### $(basename "$f")"
+  psql -q -v ON_ERROR_STOP=1 -d teste_bpms -f "$f"
+done
+# Edge Functions: testes de tradução e do cliente da API (precisa do Deno)
+if command -v deno >/dev/null; then
+  echo "### funcoes.test.ts"
+  (cd "$RAIZ/.." && deno test -q --allow-write=supabase/testes supabase/testes/funcoes.test.ts)
+  echo "### 99_testes_traducao.sql"
+  (cd "$DIR" && psql -q -v ON_ERROR_STOP=1 -d teste_bpms -f 99_testes_traducao.sql)
+else
+  echo "(Deno não instalado: testes das Edge Functions pulados)"
+fi

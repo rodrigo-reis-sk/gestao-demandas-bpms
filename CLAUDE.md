@@ -1,0 +1,86 @@
+# CLAUDE.md — memória do projeto Gestão de Demandas BP-MS
+
+Leia este arquivo inteiro antes de qualquer trabalho neste projeto.
+
+## Quem e para quê
+
+- Dono do projeto: **Rodrigo Reis** (rodrigo.reis@sankhya.com.br), gestor da equipe de
+  desenvolvimento/personalizações BP-MS (Sankhya, unidade MS).
+- Objetivo: gestão **simples** de consultores/desenvolvedores e de suas demandas, com
+  integração ao ClickUp, kanban configurável e controle de horas.
+- Prioridade de projeto: **manutenção e gestão simples**, **custo zero** (planos free).
+
+## Como o Rodrigo quer trabalhar
+
+- **Antes de desenvolver, entender e discutir.** Em pedido novo ou ambíguo: resumir o
+  entendimento, propor opções e perguntar. Só codificar depois do "ok".
+- Responder em **português do Brasil**, direto e com linguagem de negócio.
+- Trabalhar **por fases** (ver `docs/06-fases.md`). Uma conversa por fase.
+- Ao final de cada fase: atualizar `docs/06-fases.md` (checklist), `docs/07-decisoes.md`
+  e as pendências em `docs/01-escopo.md`.
+
+## Mapa da documentação
+
+| Arquivo | Quando ler |
+|---|---|
+| `docs/01-escopo.md` | Sempre. Requisitos, fora de escopo e **pendências em aberto** |
+| `docs/02-arquitetura.md` | Antes de mexer em infraestrutura, hospedagem ou segurança |
+| `docs/03-modelo-de-dados.md` | Antes de mexer no banco ou em telas que leem dados |
+| `docs/04-integracao-clickup.md` | Antes de mexer na sincronização ou na criação de tarefas |
+| `docs/05-agrupamento-de-tarefas.md` | Antes de mexer no repositório ou nas sugestões |
+| `docs/06-fases.md` | Para saber onde estamos |
+| `docs/07-decisoes.md` | Para não rediscutir o que já foi decidido |
+| `docs/08-implantacao.md` | Para publicar no Supabase / GitHub Pages e validar o piloto |
+
+## Fatos do ClickUp que não podem ser esquecidos
+
+(Detalhes em `docs/04-integracao-clickup.md` e `config/clickup.json`.)
+
+- Espaço **PMO BP-MS** (id `90133723590`). Uma **pasta por parceiro (cliente)**.
+- Listas no padrão **`<Parceiro> <FAP> Avulso`** (ex.: `Germipasto 32221 Avulso`).
+  Lista ou pasta com nome começando em **"Z"** = encerrada. Nome com "Concluída" = encerrada.
+- Pastas administrativas ignoradas: `1-BP-MS`, `2- Horas Cruzadas`, `3- Planos de Ação`.
+- Hierarquia da demanda avulsa: `1-Atendimento Base` → subtarefa do mês `AAAA-MM Mês`
+  → **tarefa do atendimento** (é essa que importa para nós).
+- Campos personalizados relevantes: Parceiro, Usuário cliente, Detalhamento, Origem,
+  Período (dropdown "08h-10h"), Etapa, Módulo, Agenda, Apontamento, Experience.
+- Status usados: `backlog base` (sem data), status padrão da lista (com data),
+  `em andamento`, `não executado`.
+- Limite da API: tratar HTTP 429 lendo `X-RateLimit-Remaining` / `X-RateLimit-Reset`
+  (o pacote legado já faz isso em `referencia/clickup-lancar-legado/motores/clickup_sync/clickup_client.py`).
+- O consultor que atende a mesma demanda em vários dias gera **várias tarefas** (uma por
+  dia). Por isso existe o repositório com agrupamento.
+- Existe uma conta compartilhada **"BPMS"** que representa pessoas diferentes por FAP
+  (ex.: Soldamaq → Cleber Nascimento). Ela **não** é cadastrada como consultor: fica só no
+  de-para `responsavel_real_por_fap`, e um gatilho troca pelo consultor real (D17).
+
+## Regras técnicas
+
+- Banco: **Supabase (Postgres)**, plano Free. Nomes de tabelas e colunas em português,
+  `snake_case`, sem acento.
+- **Nenhum nome de tabela, coluna, view ou função com nome de ferramenta externa** (ClickUp
+  etc.) — pretendemos sair do ClickUp um dia (D10). A ferramenta aparece só como valor
+  (`origem = 'clickup'`, `sistema = 'clickup'`); dados de fora usam `_externo` / `_na_origem`.
+  O nome "clickup" só é aceito nas Edge Functions de integração (`clickup-*`) e em `config/clickup.json`.
+- Toda tabela com **RLS ligado**. Formulários externos e portal do cliente **nunca** gravam
+  direto no banco: passam por uma Edge Function que valida e grava com a chave de serviço.
+- **Segredos** (tokens ClickUp, chaves Supabase, segredo do webhook, client secret do OAuth)
+  só em `.env` local (fora do git), nos segredos do Supabase ou no Supabase Vault. Nunca em
+  código, nunca em `config/`, nunca em coluna de tabela comum.
+- **Conta ClickUp por gestor** (D11): login no sistema com o mesmo e-mail do ClickUp; cada
+  gestor conecta a própria conta (OAuth), token no Vault. Criação de tarefa usa o token de
+  quem clicou. Varredura usa a "conta da sincronização". Plano B: token único (D12).
+- **Listas** (D14): toda lista descoberta entra como `a_analisar` e não sincroniza até o gestor
+  marcar. Tarefa entra se consultor **e** lista estiverem marcados.
+- O ClickUp é a fonte da verdade das **tarefas e do tempo registrado**. O nosso sistema é a
+  fonte da verdade das **demandas, do kanban, dos agrupamentos e das horas manuais**.
+- Tarefa apagada no ClickUp: marcar `excluida_na_origem = true`, nunca apagar a linha.
+- Código simples e comentado em português. Preferir menos dependências.
+
+## Estado atual
+
+Fase 0 concluída em 22/10/2026. **Fase 1: código pronto e testado localmente em 22/10/2026**
+(migração `0002_sincronizacao.sql`, Edge Functions `clickup-conectar` / `clickup-sync` / `clickup-webhook`,
+telas em `web/`). Falta: o Rodrigo criar o projeto Supabase, fazer o teste P9 (app OAuth) e o repositório
+no GitHub; depois implantar seguindo `docs/08-implantacao.md` e validar o piloto. Decisões D18–D24 propostas (P12).
+Testes: `bash supabase/testes/rodar.sh` (precisa de Postgres 16 local; com Deno, testa também as funções).

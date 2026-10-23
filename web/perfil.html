@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meu perfil · Gestão BP-MS</title>
+  <link rel="stylesheet" href="assets/estilo.css">
+  <script src="config.js"></script>
+</head>
+<body>
+<main>
+  <h1>Meu perfil</h1>
+  <p class="sub">Conecte a sua conta do ClickUp. Ela precisa usar o mesmo e-mail do seu login aqui.
+    O token fica guardado criptografado no servidor; a tela nunca o vê.</p>
+
+  <div class="cartao">
+    <h2>Minha conta do ClickUp</h2>
+    <div id="minha">Carregando…</div>
+    <div id="conectar" style="margin-top:12px"></div>
+  </div>
+
+  <div class="cartao">
+    <h2>Contas conectadas e conta da sincronização</h2>
+    <p class="suave">A varredura automática e o webhook usam a conta marcada. Escolha a de um gestor admin do ClickUp.</p>
+    <div class="tabela-rolagem"><table id="contas"></table></div>
+  </div>
+
+  <div class="cartao">
+    <h2>Webhook (atualização na hora)</h2>
+    <p class="suave">O ClickUp avisa o sistema a cada alteração no espaço PMO BP-MS. Registre uma vez, depois de conectar a conta da sincronização.</p>
+    <div id="webhook" class="suave">—</div>
+    <p class="acoes" style="margin-top:10px">
+      <button id="ver-webhook">Ver situação</button>
+      <button id="registrar-webhook">Registrar / refazer webhook</button>
+    </p>
+  </div>
+</main>
+<script type="module">
+  import { sb, esc, $, exigirLogin, montarMenu, chamarFuncao, aviso, dataHora, CONFIG } from "./assets/comum.js";
+
+  const { usuario } = await exigirLogin();
+  await montarMenu(usuario);
+
+  // ---- Retorno do login do ClickUp (OAuth): ?code=...&state=...
+  const params = new URLSearchParams(location.search);
+  if (params.get("code")) {
+    const estadoEsperado = sessionStorage.getItem("oauth_estado");
+    history.replaceState(null, "", location.pathname); // tira o código da barra de endereço
+    if (!estadoEsperado || params.get("state") !== estadoEsperado) {
+      aviso("Retorno do ClickUp não confere. Tente conectar de novo.", "erro");
+    } else {
+      try {
+        const r = await chamarFuncao("clickup-conectar", { codigo: params.get("code") });
+        aviso(`Conta ${r.email} conectada.`, "ok");
+      } catch (e) { aviso(e.message, "erro"); }
+    }
+    sessionStorage.removeItem("oauth_estado");
+  }
+
+  function conectarOAuth() {
+    const estado = crypto.randomUUID();
+    sessionStorage.setItem("oauth_estado", estado);
+    const volta = location.origin + location.pathname;
+    location.href = `https://app.clickup.com/api?client_id=${encodeURIComponent(CONFIG.clickupClientId)}` +
+      `&redirect_uri=${encodeURIComponent(volta)}&state=${encodeURIComponent(estado)}`;
+  }
+
+  async function carregar() {
+    const contas = (await sb.from("contas_integracao")
+      .select("id, usuario_id, email_externo, nome_externo, tipo_autenticacao, usar_na_sincronizacao, situacao, ultimo_erro, conectada_em, ultimo_uso_em")
+      .eq("sistema", "clickup").order("conectada_em")).data ?? [];
+    const usuarios = (await sb.from("usuarios_sistema").select("id, nome")).data ?? [];
+    const nome = (id) => usuarios.find((u) => u.id === id)?.nome ?? "—";
+
+    const minha = contas.find((c) => c.usuario_id === usuario.id);
+    const ativa = minha?.situacao === "ativa";
+    $("#minha").innerHTML = !minha ? `<span class="selo alerta">não conectada</span>` :
+      `<span class="selo ${ativa ? "ok" : "erro"}">${esc(minha.situacao)}</span> ${esc(minha.email_externo)}
+       <span class="suave">(${minha.tipo_autenticacao === "oauth" ? "login do ClickUp" : "token pessoal"}, conectada em ${dataHora(minha.conectada_em)})</span>
+       ${minha.ultimo_erro ? `<br><span class="suave">${esc(minha.ultimo_erro)}</span>` : ""}
+       ${ativa ? ` <button class="pequeno" id="desconectar">Desconectar</button>` : ""}`;
+    $("#desconectar")?.addEventListener("click", async () => {
+      if (!confirm("Desconectar sua conta do ClickUp? O token será apagado.")) return;
+      const { error } = await sb.rpc("desconectar_conta", { p_conta_id: minha.id });
+      error ? aviso(error.message, "erro") : (aviso("Conta desconectada.", "ok"), carregar());
+    });
+
+    // Botão do OAuth (D11) e, como reserva, o token pessoal.
+    $("#conectar").innerHTML = `
+      ${CONFIG.clickupClientId ? `<button class="primario" id="oauth">${ativa ? "Reconectar" : "Conectar"} com o ClickUp</button>`
+                               : `<p class="suave">O login pelo ClickUp (OAuth) ainda não foi configurado. Use o token pessoal.</p>`}
+      <details style="margin-top:12px" ${CONFIG.clickupClientId ? "" : "open"}>
+        <summary>Conectar com token pessoal</summary>
+        <p class="suave">No ClickUp: avatar → <b>Settings</b> → <b>Apps</b> → <b>API Token</b> → Generate/Copy. Começa com <code>pk_</code>.</p>
+        <div class="acoes"><input type="password" id="token" placeholder="pk_..." style="width:320px" autocomplete="off">
+        <button id="salvar-token">Conectar</button></div>
+      </details>`;
+    $("#oauth")?.addEventListener("click", conectarOAuth);
+    $("#salvar-token").onclick = async () => {
+      const token = $("#token").value.trim();
+      if (!token) return;
+      $("#salvar-token").disabled = true;
+      try {
+        const r = await chamarFuncao("clickup-conectar", { token_pessoal: token });
+        aviso(`Conta ${r.email} conectada.`, "ok");
+        $("#token").value = "";
+        carregar();
+      } catch (e) { aviso(e.message, "erro"); }
+      finally { $("#salvar-token").disabled = false; }
+    };
+
+    $("#contas").innerHTML = `<tr><th>Gestor</th><th>Conta</th><th>Situação</th><th>Último uso</th><th>Sincronização</th></tr>` +
+      (contas.length ? contas.map((c) => `<tr>
+        <td>${esc(nome(c.usuario_id))}</td><td>${esc(c.email_externo)}</td>
+        <td><span class="selo ${c.situacao === "ativa" ? "ok" : "erro"}">${esc(c.situacao)}</span></td>
+        <td>${dataHora(c.ultimo_uso_em)}</td>
+        <td>${c.usar_na_sincronizacao ? '<span class="selo ok">conta da sincronização</span>'
+          : c.situacao === "ativa" ? `<button class="pequeno" data-usar="${c.id}">Usar esta</button>` : "—"}</td></tr>`).join("")
+        : `<tr><td colspan="5" class="suave">Nenhuma conta conectada.</td></tr>`);
+    document.querySelectorAll("[data-usar]").forEach((b) => b.onclick = async () => {
+      const { error } = await sb.rpc("definir_conta_sincronizacao", { p_conta_id: b.dataset.usar });
+      error ? aviso(error.message, "erro") : (aviso("Conta da sincronização alterada.", "ok"), carregar());
+    });
+  }
+
+  async function webhook(registrar) {
+    $("#webhook").textContent = "Consultando o ClickUp…";
+    try {
+      const r = await chamarFuncao("clickup-sync", { acao: registrar ? "registrar_webhook" : "situacao_webhook" });
+      if (registrar) aviso("Webhook registrado.", "ok");
+      const w = r.webhooks?.[0];
+      $("#webhook").innerHTML = r.registrado
+        ? `<span class="selo ok">registrado</span> ${w ? `situação: ${esc(w.situacao ?? "—")}, falhas: ${esc(w.falhas)}` : ""}`
+        : `<span class="selo alerta">não registrado</span>`;
+    } catch (e) {
+      $("#webhook").textContent = "—";
+      aviso(e.message, "erro");
+    }
+  }
+  $("#ver-webhook").onclick = () => webhook(false);
+  $("#registrar-webhook").onclick = () => confirm("Registrar (ou refazer) o webhook no ClickUp?") && webhook(true);
+
+  await carregar();
+</script>
+</body>
+</html>

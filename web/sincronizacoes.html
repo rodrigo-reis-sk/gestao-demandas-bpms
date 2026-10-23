@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Log da sincronização · Gestão BP-MS</title>
+  <link rel="stylesheet" href="assets/estilo.css">
+  <script src="config.js"></script>
+</head>
+<body>
+<main>
+  <h1>Log da sincronização</h1>
+  <p class="sub">Cada varredura (a cada 20 min ou pelo botão) e cada aviso do webhook. O log guarda 90 dias.</p>
+
+  <div class="cartao">
+    <div class="acoes" style="margin-bottom:10px">
+      <select id="tipo">
+        <option value="varreduras">Varreduras</option>
+        <option value="webhook">Webhook</option>
+        <option value="erros">Só erros</option>
+        <option value="todos">Tudo</option>
+      </select>
+      <button class="primario" id="sincronizar">Sincronizar agora</button>
+      <button id="carga" title="Busca de novo as tarefas dos últimos 90 dias">Carga completa (90 dias)</button>
+      <button id="atualizar">Atualizar</button>
+    </div>
+    <div class="tabela-rolagem"><table id="tabela"></table></div>
+  </div>
+</main>
+<script type="module">
+  import { sb, esc, $, exigirLogin, montarMenu, dataHora, sincronizarAgora, aviso } from "./assets/comum.js";
+
+  const { usuario } = await exigirLogin();
+  await montarMenu(usuario);
+  let relogio = null;
+
+  async function carregar() {
+    let q = sb.from("sincronizacoes").select("*").order("iniciado_em", { ascending: false }).limit(150);
+    const tipo = $("#tipo").value;
+    if (tipo === "varreduras") q = q.neq("tipo", "webhook");
+    if (tipo === "webhook") q = q.eq("tipo", "webhook");
+    if (tipo === "erros") q = q.eq("sucesso", false);
+    const { data, error } = await q;
+    if (error) return aviso(error.message, "erro");
+    const linhas = data ?? [];
+
+    $("#tabela").innerHTML = `<tr><th>Início</th><th>Tipo</th><th>Situação</th><th class="num">Duração</th>
+      <th class="num">Lidas</th><th class="num">Novas</th><th class="num">Alteradas</th><th class="num">Tempo</th>
+      <th class="num">Listas novas</th><th class="num">Chamadas</th><th>Mensagem</th></tr>` +
+      (linhas.length ? linhas.map((s) => {
+        const situacao = !s.finalizado_em ? '<span class="selo alerta">em andamento</span>'
+          : s.sucesso ? '<span class="selo ok">ok</span>' : '<span class="selo erro">erro</span>';
+        const dur = s.finalizado_em ? Math.round((new Date(s.finalizado_em) - new Date(s.iniciado_em)) / 1000) + " s" : "—";
+        return `<tr><td>${dataHora(s.iniciado_em)}</td><td>${esc(s.tipo)}</td><td>${situacao}</td><td class="num">${dur}</td>
+          <td class="num">${s.tarefas_lidas ?? 0}</td><td class="num">${s.tarefas_novas ?? 0}</td><td class="num">${s.tarefas_alteradas ?? 0}</td>
+          <td class="num">${s.registros_tempo ?? 0}</td><td class="num">${s.listas_novas ?? 0}</td><td class="num">${s.chamadas_api ?? 0}</td>
+          <td>${esc(s.mensagem ?? "")}${s.parametros ? `<details><summary>detalhes</summary><pre>${esc(JSON.stringify(s.parametros, null, 2))}</pre></details>` : ""}</td></tr>`;
+      }).join("") : `<tr><td colspan="11" class="suave">Nenhum registro.</td></tr>`);
+
+    // enquanto houver varredura em andamento, atualiza sozinho a cada 5 s
+    clearTimeout(relogio);
+    if (linhas.some((s) => !s.finalizado_em)) relogio = setTimeout(carregar, 5000);
+  }
+
+  async function disparar(tipo, botao) {
+    botao.disabled = true;
+    try { await sincronizarAgora(tipo); setTimeout(carregar, 1500); }
+    catch (e) { aviso(e.message, "erro"); }
+    finally { botao.disabled = false; }
+  }
+  $("#sincronizar").onclick = (e) => disparar("manual", e.target);
+  $("#carga").onclick = (e) => confirm("Buscar de novo as tarefas dos últimos 90 dias?") && disparar("carga_inicial", e.target);
+  $("#atualizar").onclick = carregar;
+  $("#tipo").onchange = carregar;
+
+  await carregar();
+</script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Início · Gestão BP-MS</title>
+  <link rel="stylesheet" href="assets/estilo.css">
+  <script src="config.js"></script>
+</head>
+<body>
+<main>
+  <h1>Início</h1>
+  <p class="sub">Situação da sincronização com o ClickUp. O kanban chega na fase 2.</p>
+
+  <div class="grade" id="numeros"></div>
+
+  <div class="cartao">
+    <h2>Sincronização</h2>
+    <div id="ultima" class="suave">Carregando…</div>
+    <p class="acoes" style="margin-top:12px">
+      <button class="primario" id="sincronizar">Sincronizar agora</button>
+      <a class="botao" href="sincronizacoes.html">Ver log</a>
+    </p>
+  </div>
+
+  <div class="cartao" id="conta"></div>
+</main>
+<script type="module">
+  import { sb, esc, $, exigirLogin, montarMenu, atualizarContadores, dataHora, haQuanto, sincronizarAgora, aviso } from "./assets/comum.js";
+
+  const { usuario } = await exigirLogin();
+  await montarMenu(usuario);
+
+  async function carregar() {
+    const p = await atualizarContadores() || {};
+    const { count: tarefas } = await sb.from("tarefas").select("id", { count: "exact", head: true }).eq("excluida_na_origem", false);
+    const { count: marcados } = await sb.from("consultores").select("id", { count: "exact", head: true }).eq("sincronizar", true);
+    const { count: listasMarcadas } = await sb.from("clientes_faps").select("id", { count: "exact", head: true }).eq("situacao_sincronizacao", "sincronizar");
+    const cartoes = [
+      ["Listas a analisar", p.listas_a_analisar ?? 0, "listas.html"],
+      ["Listas sincronizando", listasMarcadas ?? 0, "listas.html"],
+      ["Consultores sincronizando", marcados ?? 0, "consultores.html"],
+      ["Tarefas no banco", tarefas ?? 0, null],
+      ["Pendentes de agrupar", p.tarefas_pendentes ?? 0, null],
+      ["Conta BPMS sem pessoa", p.responsaveis_sem_pessoa ?? 0, null],
+    ];
+    $("#numeros").innerHTML = cartoes.map(([t, n, href]) =>
+      `<div class="cartao"><div class="suave">${esc(t)}</div><div class="numero">${href ? `<a href="${href}">${n}</a>` : n}</div></div>`).join("");
+
+    const { data: ult } = await sb.from("sincronizacoes").select("*").neq("tipo", "webhook")
+      .order("iniciado_em", { ascending: false }).limit(1).maybeSingle();
+    const { data: wh } = await sb.from("sincronizacoes").select("iniciado_em").eq("tipo", "webhook")
+      .order("iniciado_em", { ascending: false }).limit(1).maybeSingle();
+    $("#ultima").innerHTML = !ult ? "Nenhuma sincronização ainda." :
+      `Última varredura: <b>${dataHora(ult.iniciado_em)}</b> (${haQuanto(ult.iniciado_em)}) —
+       ${ult.finalizado_em ? (ult.sucesso ? '<span class="selo ok">ok</span>' : '<span class="selo erro">erro</span>') : '<span class="selo alerta">em andamento</span>'}
+       <br>${esc(ult.mensagem || "")}
+       <br>Último aviso do webhook: ${wh ? `${dataHora(wh.iniciado_em)} (${haQuanto(wh.iniciado_em)})` : "nenhum"}`;
+
+    const { data: contas } = await sb.from("contas_integracao").select("email_externo, situacao, usar_na_sincronizacao, usuario_id");
+    const minha = contas?.find((c) => c.usuario_id === usuario.id && c.situacao === "ativa");
+    const sinc = contas?.find((c) => c.usar_na_sincronizacao && c.situacao === "ativa");
+    $("#conta").innerHTML = `<h2>Contas do ClickUp</h2>
+      <p>Sua conta: ${minha ? `<span class="selo ok">conectada</span> ${esc(minha.email_externo)}` : `<span class="selo alerta">não conectada</span> — <a href="perfil.html">conectar</a>`}</p>
+      <p>Conta da sincronização: ${sinc ? esc(sinc.email_externo) : '<span class="selo erro">nenhuma</span> (a varredura usa o token de reserva, se configurado)'}</p>`;
+  }
+
+  $("#sincronizar").onclick = async () => {
+    $("#sincronizar").disabled = true;
+    try { await sincronizarAgora(); setTimeout(carregar, 4000); }
+    catch (e) { aviso(e.message, "erro"); }
+    finally { $("#sincronizar").disabled = false; }
+  };
+
+  await carregar();
+</script>
+</body>
+</html>
