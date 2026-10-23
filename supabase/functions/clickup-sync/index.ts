@@ -22,7 +22,7 @@ import {
 } from "../_compartilhado/base.ts";
 import { ClienteClickUp, clienteDaSincronizacao, ErroClickUp, escolherEquipe } from "../_compartilhado/clickup-api.ts";
 import {
-  CLICKUP, ehTarefaEstrutura, traduzirListas, traduzirMembros, traduzirRegistrosTempo, traduzirTarefa,
+  CLICKUP, traduzirListas, traduzirMembros, traduzirRegistrosTempo, traduzirTarefa,
 } from "../_compartilhado/clickup-traducao.ts";
 
 const LOTE = 100; // tarefas por chamada ao banco
@@ -52,6 +52,11 @@ Deno.serve(async (req) => {
       .gt("iniciado_em", new Date(Date.now() - 5 * 60_000).toISOString()).limit(1);
     if (emAndamento?.length) {
       return responder(409, { erro: "Já existe uma sincronização em andamento.", sincronizacao_id: emAndamento[0].id });
+    }
+
+    // "Carga completa" pedida pela tela: todas as listas marcadas voltam a ser carregadas desde a data de corte
+    if (tipo === "carga_inicial") {
+      await banco.from("clientes_faps").update({ carregada_em: null }).eq("situacao_sincronizacao", "sincronizar");
     }
 
     const { data: log, error } = await banco.from("sincronizacoes")
@@ -93,42 +98,70 @@ async function sincronizar(banco: Banco, logId: number, tipo: string) {
     const resultadoListas = await rpc<any>(banco, "gravar_listas", { p_listas: listas });
     totais.listas_novas = resultadoListas?.novas_a_analisar ?? 0;
 
-    // 3. Tarefas
-    const filtros = await rpc<{ usuarios: string[]; listas: string[] }>(banco, "filtros_sincronizacao");
-    const [inicio] = await rpc<{ desde: string; carga_completa: boolean }[]>(banco, "inicio_busca_tarefas", { p_sistema: "clickup" });
-    const cargaCompleta = tipo === "carga_inicial" || inicio.carga_completa;
-    const desde = tipo === "carga_inicial"
-      ? new Date(Date.now() - Number(cfg.carga_inicial_dias ?? 90) * 86_400_000)
-      : new Date(inicio.desde);
-    Object.assign(parametros, { desde: desde.toISOString(), carga_completa: cargaCompleta,
-      consultores: filtros.usuarios.length, listas: filtros.listas.length });
+    // 3. Tarefas e subtarefas — TUDO das listas marcadas (D32), por lista:
+    //    • lista ainda não carregada → desde a data de corte (01/01/2026), inclusive concluídas;
+    //    • lista já carregada → só o que mudou desde a última varredura.
+    //    A carga respeita um tempo máximo por execução; o que faltar continua na próxima (D33).
+    const inicioExecucao = Date.now();
+    const LIMITE_MS = 100_000;
+    const corte = new Date(String(cfg.carga_desde ?? "2026-01-01") + "T00:00:00-04:00");
+    const [inicio] = await rpc<{ desde: string }[]>(banco, "inicio_busca_tarefas", { p_sistema: "clickup" });
+    const desdeIncremental = new Date(Math.max(new Date(inicio.desde).getTime(), corte.getTime()));
+    const marcadas = await rpc<{ lista_id_externo: string; carregada: boolean }[]>(banco, "listas_para_sincronizar");
+    const carregadas = marcadas.filter((l) => l.carregada).map((l) => l.lista_id_externo);
+    const pendentes = marcadas.filter((l) => !l.carregada).map((l) => l.lista_id_externo);
+    Object.assign(parametros, { listas: marcadas.length, listas_a_carregar: pendentes.length,
+      desde_incremental: desdeIncremental.toISOString(), carga_desde: corte.toISOString() });
 
-    if (!filtros.usuarios.length || !filtros.listas.length) {
-      avisos.push("Nenhum consultor ou nenhuma lista marcados para sincronizar: tarefas não buscadas");
-    } else {
-      const tarefas = (await cliente.tarefasAlteradas(parametros.equipe_id as string, {
-        responsaveis: filtros.usuarios, listas: filtros.listas, desde,
-      })).filter((t) => !ehTarefaEstrutura(t)).map(traduzirTarefa);
-
+    const gravar = async (brutas: any[]) => {
+      const tarefas = brutas.map(traduzirTarefa);
       for (let i = 0; i < tarefas.length; i += LOTE) {
         const r = await rpc<any>(banco, "gravar_tarefas", { p_origem: "clickup", p_tarefas: tarefas.slice(i, i + LOTE) });
         totais.tarefas_lidas += r.lidas;
         totais.tarefas_novas += r.novas;
         totais.tarefas_alteradas += r.alteradas;
       }
+    };
 
-      // 4. Registros de tempo
-      const fim = new Date(Date.now() + 86_400_000);
-      const inicioTempo = cargaCompleta ? desde : new Date(Date.now() - Number(cfg.janela_tempo_dias ?? 14) * 86_400_000);
-      const entradas = await cliente.registrosTempo(parametros.equipe_id as string, {
-        usuarios: filtros.usuarios, inicio: inicioTempo, fim, espacoId,
-      });
-      const rt = await rpc<any>(banco, "gravar_registros_tempo", {
-        p_origem: "clickup", p_inicio: inicioTempo.toISOString(), p_fim: fim.toISOString(),
-        p_usuarios: filtros.usuarios, p_registros: traduzirRegistrosTempo(entradas),
-      });
-      totais.registros_tempo = rt.gravados;
-      if (rt.excluidos) avisos.push(`${rt.excluidos} registro(s) de tempo apagado(s) na origem`);
+    if (!marcadas.length) {
+      avisos.push("Nenhuma lista marcada para sincronizar: tarefas não buscadas");
+    } else {
+      // listas já carregadas: só alterações (uma busca para todas)
+      if (carregadas.length) {
+        await gravar(await cliente.tarefasAlteradas(parametros.equipe_id as string, {
+          responsaveis: [], listas: carregadas, desde: desdeIncremental,
+        }));
+      }
+      // listas a carregar: uma por vez, até o tempo máximo
+      let feitas = 0;
+      for (const lista of pendentes) {
+        if (Date.now() - inicioExecucao > LIMITE_MS) break;
+        await gravar(await cliente.tarefasAlteradas(parametros.equipe_id as string, {
+          responsaveis: [], listas: [lista], desde: corte,
+        }));
+        await rpc(banco, "marcar_listas_carregadas", { p_listas: [lista] });
+        feitas++;
+      }
+      parametros.listas_carregadas_agora = feitas;
+      if (feitas < pendentes.length) {
+        avisos.push(`Carga em andamento: faltam ${pendentes.length - feitas} lista(s), continua na próxima varredura`);
+      }
+
+      // 4. Registros de tempo (cronômetro do ClickUp; aparece à parte das horas das agendas)
+      const filtros = await rpc<{ usuarios: string[] }>(banco, "filtros_sincronizacao");
+      if (filtros.usuarios.length) {
+        const fim = new Date(Date.now() + 86_400_000);
+        const inicioTempo = new Date(Date.now() - Number(cfg.janela_tempo_dias ?? 14) * 86_400_000);
+        const entradas = await cliente.registrosTempo(parametros.equipe_id as string, {
+          usuarios: filtros.usuarios, inicio: inicioTempo, fim, espacoId,
+        });
+        const rt = await rpc<any>(banco, "gravar_registros_tempo", {
+          p_origem: "clickup", p_inicio: inicioTempo.toISOString(), p_fim: fim.toISOString(),
+          p_usuarios: filtros.usuarios, p_registros: traduzirRegistrosTempo(entradas),
+        });
+        totais.registros_tempo = rt.gravados;
+        if (rt.excluidos) avisos.push(`${rt.excluidos} registro(s) de tempo apagado(s) na origem`);
+      }
     }
 
     if (contaId) await rpc(banco, "registrar_uso_conta", { p_conta_id: contaId });

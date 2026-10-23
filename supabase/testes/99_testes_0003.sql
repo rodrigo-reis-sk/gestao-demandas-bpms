@@ -31,12 +31,28 @@ do $$ begin
   raise notice 'ok regras de listas';
 end $$;
 
-\echo '== L2 limpeza das tarefas-estrutura (rodando a 0003 de novo)'
+\echo '== L2 limpeza das tarefas-estrutura (mesmo SQL da 0003, seção 3)'
 insert into tarefas (id_externo, nome, status) values
   ('est1', '1-Atendimento da Base', 'atendimento base'),
   ('est2', '2026-10 Outubro', 'em andamento'),
   ('real1', '2-Serviços', 'em andamento');
-\i ../migrations/0003_listas_e_estrutura.sql
+with estrutura as (
+  select id from public.tarefas
+   where origem = 'clickup'
+     and (lower(coalesce(status, '')) = 'atendimento base'
+          or public.normalizar_texto(nome) ~ '^[0-9]+ atendimento (da )?base$'
+          or nome ~ '^\s*\d{4}-\d{2}\s+\S+\s*$')
+)
+update public.tarefas t
+   set situacao = 'ignorada',
+       demanda_id = case when t.agrupada_por = 'automatico' then null else t.demanda_id end,
+       agrupada_por = case when t.agrupada_por = 'automatico' then null else t.agrupada_por end
+  from estrutura e
+ where t.id = e.id and (t.situacao = 'pendente' or t.agrupada_por = 'automatico');
+
+delete from public.sugestoes_agrupamento s
+ using public.tarefas t
+ where s.tarefa_id = t.id and t.situacao = 'ignorada' and s.status = 'pendente';
 do $$ begin
   if (select count(*) from tarefas where id_externo in ('est1','est2') and situacao='ignorada') <> 2 then
     raise exception 'FALHOU: tarefa-estrutura continuou pendente'; end if;

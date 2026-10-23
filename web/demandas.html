@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Demandas · Gestão BP-MS</title>
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700&display=swap">
+  <link rel="stylesheet" href="assets/estilo.css">
+  <script src="assets/tema.js"></script>
+  <script src="config.js"></script>
+  <style>
+    /* Só desta tela: árvore Cliente → Lista → Demanda → Agendas */
+    .barra { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+    .barra input[type=text] { width: 240px; }
+    .barra .resumo { color: var(--suave); font-size: .86rem; margin-left: auto; }
+    details.cliente { margin-bottom: 12px; padding: 0; overflow: hidden; }
+    details.cliente > summary, details.lista > summary { list-style: none; cursor: pointer; }
+    details.cliente > summary::-webkit-details-marker, details.lista > summary::-webkit-details-marker { display: none; }
+    .cab { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 11px 14px; }
+    .cab h2 { margin: 0; font-size: 1rem; color: var(--texto); }
+    .cab .tot { color: var(--suave); font-size: .82rem; }
+    .cab .seta-abrir { margin-left: auto; color: var(--suave); transition: transform .15s; }
+    details[open] > summary .seta-abrir { transform: rotate(180deg); }
+    details.cliente > summary { background: var(--cartao-2); border-bottom: 1px solid var(--borda); }
+    details.lista { border-top: 1px solid var(--borda); }
+    details.lista:first-of-type { border-top: 0; }
+    details.lista > summary .cab { padding-left: 22px; }
+    details.lista > summary h3 { margin: 0; font-size: .93rem; font-weight: 600; }
+    .lista-acoes { display: flex; gap: 6px; padding: 0 14px 8px 22px; flex-wrap: wrap; }
+    .demandas { padding: 4px 14px 14px 22px; display: grid; gap: 10px; }
+    .demanda { border: 1px solid var(--borda); border-radius: calc(var(--raio) + 2px); background: var(--cartao); padding: 12px 14px; }
+    .demanda.a_analisar { border-left: 4px solid var(--alerta); }
+    .demanda.nao_sincronizar { opacity: .6; }
+    .d-topo { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+    .d-nome { font-weight: 600; font-size: .98rem; }
+    .d-nome a { color: var(--suave); text-decoration: none; font-size: .8rem; margin-left: 4px; }
+    .d-selos { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; align-items: center; }
+    .d-meta { color: var(--suave); font-size: .82rem; margin-top: 4px; }
+    .d-direita { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+    .barra-horas { display: flex; height: 7px; border-radius: 4px; overflow: hidden; background: var(--borda); margin: 10px 0 4px; }
+    .barra-horas .real { background: var(--acento); }
+    .barra-horas .agend { background: color-mix(in srgb, var(--suave) 55%, transparent); }
+    .d-horas { display: flex; justify-content: space-between; color: var(--suave); font-size: .8rem; gap: 10px; flex-wrap: wrap; }
+    .d-horas b { color: var(--texto); font-weight: 600; }
+    .d-detalhe { margin-top: 10px; border-top: 1px dashed var(--borda); padding-top: 10px; }
+    .d-detalhe .rot { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--suave); font-weight: 600; margin: 8px 0 4px; }
+    .agenda { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--borda); }
+    .agenda:last-child { border-bottom: 0; }
+    .agenda .ic { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: .72rem; flex: none; }
+    .agenda .ic.realizada { background: var(--ok); color: var(--fundo); }
+    .agenda .ic.agendada { border: 2px solid var(--suave); }
+    .agenda .ic.nao_executada { border: 2px dashed var(--erro); color: var(--erro); }
+    .agenda .txt { flex: 1; min-width: 0; }
+    .agenda .txt b { font-weight: 600; }
+    .agenda .txt small { display: block; color: var(--suave); }
+    .agenda .h { font-weight: 600; font-variant-numeric: tabular-nums; }
+    .agenda.fora { opacity: .5; }
+    .agenda.fora .h { text-decoration: line-through; }
+    .segmento { display: inline-flex; border: 1px solid var(--borda); border-radius: var(--raio); overflow: hidden; }
+    .segmento button { border: 0; border-radius: 0; padding: 3px 11px; font-size: .82rem; background: var(--cartao); color: var(--suave); }
+    .segmento button + button { border-left: 1px solid var(--borda); }
+    .segmento button.sim[aria-pressed="true"] { background: var(--acento); color: var(--acento-texto); font-weight: 600; }
+    .segmento button.nao[aria-pressed="true"] { background: var(--texto); color: var(--fundo); font-weight: 600; }
+    .link-agendas { background: none; border: 0; padding: 0; color: var(--acento-forte); font-size: .82rem; cursor: pointer; }
+    @media (max-width: 640px) { .d-direita { margin-left: 0; width: 100%; } .barra .resumo { margin-left: 0; width: 100%; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Demandas</h1>
+  <p class="sub">Cada tarefa do ClickUp é uma <b>demanda</b>; as subtarefas são as <b>agendas</b>. Escolha quais demandas entram
+    nos painéis (<b>Sincronizar</b>) e, se precisar, tire agendas específicas da conta.</p>
+
+  <div class="barra">
+    <input type="text" id="busca" placeholder="Buscar demanda, cliente ou FAP">
+    <select id="selecao" aria-label="Escolha">
+      <option value="a_analisar">A analisar</option>
+      <option value="sincronizar">Sincronizando</option>
+      <option value="nao_sincronizar">Não sincronizar</option>
+      <option value="">Todas</option>
+    </select>
+    <select id="status" aria-label="Status"><option value="">Todos os status</option></select>
+    <select id="gerente" aria-label="Gerente"><option value="">Todos os gerentes</option></select>
+    <select id="ordem" aria-label="Ordenar por">
+      <option value="atualizada">Ordenar: alteração mais recente</option>
+      <option value="nome">Ordenar: nome (A → Z)</option>
+      <option value="realizadas">Ordenar: mais horas realizadas</option>
+      <option value="agendadas">Ordenar: mais horas agendadas</option>
+      <option value="agenda">Ordenar: próxima/última agenda</option>
+    </select>
+    <span class="resumo" id="resumo">Carregando…</span>
+  </div>
+
+  <div id="arvore"></div>
+</main>
+<script type="module">
+  import { sb, esc, $, exigirLogin, montarMenu, atualizarContadores, aviso, buscarTudo, horas } from "./assets/comum.js";
+
+  const { usuario } = await exigirLogin();
+  await montarMenu(usuario);
+
+  let demandas = [];
+  const abertos = new Set();          // grupos abertos (cliente/lista), para manter ao redesenhar
+  const agendasAbertas = new Set();   // demandas com as agendas abertas
+  const cacheAgendas = new Map();
+
+  const CHAVE = "gestao-bpms-demandas-filtros";
+  try {
+    const f = JSON.parse(localStorage.getItem(CHAVE)) || {};
+    for (const id of ["selecao", "ordem"]) if (f[id] !== undefined) $("#" + id).value = f[id];
+  } catch { /* ignora */ }
+  const guardar = () => {
+    try { localStorage.setItem(CHAVE, JSON.stringify({ selecao: $("#selecao").value, ordem: $("#ordem").value })); } catch { /* ignora */ }
+  };
+
+  const texto = (a, b) => String(a ?? "").localeCompare(String(b ?? ""), "pt-BR", { numeric: true, sensitivity: "base" });
+  const nomePasta = (d) => (d.pasta_nome ?? d.cliente_nome ?? "(sem cliente)").replace(/\s-\s*[A-Z]{2,3}\s*$/, "");
+  const dataCurta = (v) => v ? new Date(v).toLocaleDateString("pt-BR", { timeZone: "America/Campo_Grande", day: "2-digit", month: "2-digit" }) : "";
+  const classeStatus = (s) => {
+    const n = (s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    return n.startsWith("conclu") ? "ok" : /suspen|cancel|nao exec/.test(n) ? "erro" : /valid|aguard|pend/.test(n) ? "alerta" : "";
+  };
+
+  async function carregar() {
+    try {
+      demandas = await buscarTudo(() => sb.from("vw_demandas").select("*").order("id"));
+    } catch (e) { return aviso(e.message, "erro"); }
+    const status = [...new Set(demandas.map((d) => d.status).filter(Boolean))].sort(texto);
+    $("#status").innerHTML = `<option value="">Todos os status</option>` + status.map((s) => `<option>${esc(s)}</option>`).join("");
+    const siglas = [...new Set(demandas.map((d) => d.sigla_gerente).filter(Boolean))].sort();
+    $("#gerente").innerHTML = `<option value="">Todos os gerentes</option>` + siglas.map((s) => `<option>${esc(s)}</option>`).join("");
+    desenhar();
+  }
+
+  function visiveis() {
+    const busca = $("#busca").value.trim().toLowerCase();
+    const sel = $("#selecao").value, st = $("#status").value, ger = $("#gerente").value;
+    return demandas.filter((d) =>
+      (!sel || d.selecao === sel) && (!st || d.status === st) && (!ger || d.sigla_gerente === ger) &&
+      (!busca || [d.nome, d.cliente_nome, d.pasta_nome, d.nome_lista, d.fap].join(" ").toLowerCase().includes(busca)));
+  }
+
+  function ordenar(lista) {
+    const modo = $("#ordem").value;
+    const cmp = {
+      atualizada: (a, b) => texto(b.atualizada_na_origem, a.atualizada_na_origem),
+      nome: (a, b) => texto(a.nome, b.nome),
+      realizadas: (a, b) => b.minutos_realizados - a.minutos_realizados,
+      agendadas: (a, b) => b.minutos_agendados - a.minutos_agendados,
+      agenda: (a, b) => texto(b.ultima_agenda, a.ultima_agenda),
+    }[modo];
+    return [...lista].sort(cmp);
+  }
+
+  function desenhar() {
+    const lista = ordenar(visiveis());
+    const qtd = (s) => demandas.filter((d) => d.selecao === s).length;
+    $("#resumo").textContent = `${lista.length} exibida(s) · ${qtd("a_analisar")} a analisar · ${qtd("sincronizar")} sincronizando · ${qtd("nao_sincronizar")} não sincronizar`;
+
+    // cliente → lista → demandas (a ordem dos grupos segue a 1ª demanda de cada um na ordenação escolhida)
+    const clientes = new Map();
+    for (const d of lista) {
+      const kc = d.pasta_nome ?? d.cliente_nome ?? "-";
+      if (!clientes.has(kc)) clientes.set(kc, new Map());
+      const listas = clientes.get(kc);
+      const kl = d.fap_id ?? d.nome_lista ?? "-";
+      if (!listas.has(kl)) listas.set(kl, []);
+      listas.get(kl).push(d);
+    }
+    const poucos = clientes.size <= 3 || $("#busca").value.trim();
+    const soma = (ds, campo) => ds.reduce((t, d) => t + (d[campo] ?? 0), 0);
+
+    $("#arvore").innerHTML = clientes.size ? [...clientes.entries()].map(([kc, listas]) => {
+      const todas = [...listas.values()].flat();
+      const abertoC = poucos || abertos.has("c:" + kc);
+      return `<details class="cartao cliente" data-chave="c:${esc(kc)}" ${abertoC ? "open" : ""}>
+        <summary><div class="cab"><h2>${esc(nomePasta(todas[0]))}</h2>
+          ${todas[0].sigla_gerente ? `<span class="selo">${esc(todas[0].sigla_gerente)}</span>` : ""}
+          <span class="tot">${todas.length} demanda(s) · ${horas(soma(todas, "minutos_realizados"))} real. · ${horas(soma(todas, "minutos_agendados"))} agend.</span>
+          <span class="seta-abrir">▾</span></div></summary>
+        ${abertoC ? [...listas.entries()].map(([kl, ds]) => blocoLista(kl, ds, poucos)).join("") : ""}
+      </details>`;
+    }).join("") : `<div class="cartao suave">Nenhuma demanda com esses filtros. Se ainda não sincronizou depois de marcar as listas, use Log → Sincronizar agora.</div>`;
+  }
+
+  function blocoLista(kl, ds, poucos) {
+    const aberto = poucos || abertos.has("l:" + kl);
+    const soma = (campo) => ds.reduce((t, d) => t + (d[campo] ?? 0), 0);
+    return `<details class="lista" data-chave="l:${esc(kl)}" ${aberto ? "open" : ""}>
+      <summary><div class="cab"><h3>${esc(ds[0].nome_lista ?? "(lista)")}</h3>
+        <span class="tot">${ds.length} demanda(s) · ${horas(soma("minutos_realizados"))} real. · ${horas(soma("minutos_agendados"))} agend.</span>
+        <span class="seta-abrir">▾</span></div></summary>
+      ${aberto ? `<div class="lista-acoes">
+          <button class="pequeno" data-lote="${esc(kl)}" data-sel="sincronizar">Sincronizar as ${ds.length} exibidas</button>
+          <button class="pequeno" data-lote="${esc(kl)}" data-sel="nao_sincronizar">Não sincronizar as ${ds.length} exibidas</button>
+        </div>
+        <div class="demandas">${ds.map(cartao).join("")}</div>` : ""}
+    </details>`;
+  }
+
+  function cartao(d) {
+    const total = Math.max(d.minutos_planejados ?? 0, d.minutos_realizados + d.minutos_agendados) || 1;
+    const datas = d.primeira_agenda ? `${dataCurta(d.primeira_agenda)} → ${dataCurta(d.ultima_agenda)}`
+      : d.data_inicio || d.data_vencimento ? `${dataCurta(d.data_inicio)} → ${dataCurta(d.data_vencimento)}` : "";
+    return `<article class="demanda ${d.selecao}" data-id="${d.id}">
+      <div class="d-topo">
+        <div>
+          <div class="d-nome">${esc(d.nome)}${d.url ? `<a href="${esc(d.url)}" target="_blank" rel="noopener" title="Abrir no ClickUp">↗</a>` : ""}</div>
+          <div class="d-selos">
+            ${d.status ? `<span class="selo ${classeStatus(d.status)}">${esc(d.status)}</span>` : ""}
+            ${d.agenda_tipo ? `<span class="selo">${esc(d.agenda_tipo)}</span>` : ""}
+            ${d.etapa ? `<span class="suave" style="font-size:.8rem">${esc(d.etapa)}</span>` : ""}
+          </div>
+          <div class="d-meta">${[d.responsavel_nome, datas, d.qtd_agendas ? `${d.qtd_agendas} agenda(s)` : ""].filter(Boolean).map(esc).join(" · ")}</div>
+        </div>
+        <div class="d-direita">
+          <span class="segmento" role="group" aria-label="Sincronizar demanda">
+            <button class="sim" data-sel="sincronizar" aria-pressed="${d.selecao === "sincronizar"}">Sincronizar</button>
+            <button class="nao" data-sel="nao_sincronizar" aria-pressed="${d.selecao === "nao_sincronizar"}">Não</button>
+          </span>
+        </div>
+      </div>
+      <div class="barra-horas" title="realizadas / agendadas / planejadas">
+        <span class="real" style="width:${(100 * d.minutos_realizados / total).toFixed(1)}%"></span>
+        <span class="agend" style="width:${(100 * d.minutos_agendados / total).toFixed(1)}%"></span>
+      </div>
+      <div class="d-horas">
+        <span><b>${horas(d.minutos_realizados)}</b> realizadas · <b>${horas(d.minutos_agendados)}</b> agendadas</span>
+        <span>${d.minutos_planejados ? `<b>${horas(d.minutos_planejados)}</b> planejadas` : "sem horas planejadas"}</span>
+      </div>
+      <button class="link-agendas" data-agendas="${d.id}">${agendasAbertas.has(d.id) ? "Ocultar agendas ▴" : "Ver agendas e detalhamento ▾"}</button>
+      ${agendasAbertas.has(d.id) ? `<div class="d-detalhe" id="det-${d.id}">${detalhe(d)}</div>` : ""}
+    </article>`;
+  }
+
+  function detalhe(d) {
+    const ags = cacheAgendas.get(d.id);
+    const det = d.detalhamento ? `<div class="rot">Detalhamento</div><div>${esc(d.detalhamento).slice(0, 1500)}</div>` : "";
+    if (!ags) return det + `<div class="suave">Carregando agendas…</div>`;
+    return det + `<div class="rot">Agendas (${ags.length})</div>` + (ags.length ? ags.map((a) => {
+      const fora = a.selecao === "nao_sincronizar" || a.situacao_agenda === "nao_executada";
+      const ic = { realizada: "✓", agendada: "", nao_executada: "✕" }[a.situacao_agenda] ?? "";
+      return `<div class="agenda ${fora ? "fora" : ""}">
+        <span class="ic ${a.situacao_agenda}" title="${esc(a.status ?? "")}">${ic}</span>
+        <span class="txt"><b>${dataCurta(a.data_agenda) || "sem data"}${a.consultor_nome ? " · " + esc(a.consultor_nome) : ""}</b>
+          <small>${esc(a.nome)}${a.periodo ? " · " + esc(a.periodo) : ""}</small></span>
+        <span class="h">${a.minutos_agenda ? horas(a.minutos_agenda) : "—"}</span>
+        <button class="pequeno" data-agenda="${a.id}" data-sel="${a.selecao === "nao_sincronizar" ? "sincronizar" : "nao_sincronizar"}"
+          title="${a.selecao === "nao_sincronizar" ? "Voltar a contar esta agenda" : "Não contar esta agenda nas horas"}">${a.selecao === "nao_sincronizar" ? "Contar" : "Não contar"}</button>
+      </div>`;
+    }).join("") : `<div class="suave">Sem agendas.</div>`);
+  }
+
+  async function abrirAgendas(id) {
+    if (agendasAbertas.has(id)) { agendasAbertas.delete(id); desenhar(); return; }
+    agendasAbertas.add(id);
+    desenhar();
+    const { data, error } = await sb.from("vw_agendas").select("*").eq("demanda_id", id).order("data_agenda");
+    if (error) return aviso(error.message, "erro");
+    cacheAgendas.set(id, data ?? []);
+    const alvo = $("#det-" + id);
+    if (alvo) alvo.innerHTML = detalhe(demandas.find((d) => d.id === id));
+  }
+
+  async function escolher(ids, selecao) {
+    if (!ids.length) return;
+    for (let i = 0; i < ids.length; i += 200) {     // em lotes (URL do filtro tem limite)
+      const { error } = await sb.from("tarefas").update({ selecao }).in("id", ids.slice(i, i + 200));
+      if (error) return aviso(error.message, "erro");
+    }
+    for (const d of demandas) if (ids.includes(d.id)) d.selecao = selecao;
+    aviso(`${ids.length} demanda(s): ${selecao === "sincronizar" ? "sincronizar" : "não sincronizar"}.`, "ok");
+    desenhar();
+    atualizarContadores();
+  }
+
+  async function escolherAgenda(idAgenda, selecao, idDemanda) {
+    const { error } = await sb.from("tarefas").update({ selecao }).eq("id", idAgenda);
+    if (error) return aviso(error.message, "erro");
+    // recarrega a demanda (as somas mudam) e as agendas dela
+    const [{ data: d }, { data: ags }] = await Promise.all([
+      sb.from("vw_demandas").select("*").eq("id", idDemanda).maybeSingle(),
+      sb.from("vw_agendas").select("*").eq("demanda_id", idDemanda).order("data_agenda"),
+    ]);
+    if (d) Object.assign(demandas.find((x) => x.id === idDemanda), d);
+    cacheAgendas.set(idDemanda, ags ?? []);
+    desenhar();
+  }
+
+  $("#arvore").addEventListener("click", (ev) => {
+    const alvo = ev.target;
+    const bAg = alvo.closest("button[data-agenda]");
+    if (bAg) return escolherAgenda(bAg.dataset.agenda, bAg.dataset.sel, bAg.closest(".demanda").dataset.id);
+    const bLote = alvo.closest("button[data-lote]");
+    if (bLote) {
+      const ids = visiveis().filter((d) => String(d.fap_id ?? d.nome_lista ?? "-") === bLote.dataset.lote).map((d) => d.id);
+      return escolher(ids, bLote.dataset.sel);
+    }
+    const bSel = alvo.closest(".segmento button[data-sel]");
+    if (bSel && bSel.getAttribute("aria-pressed") !== "true") return escolher([bSel.closest(".demanda").dataset.id], bSel.dataset.sel);
+    const bAgs = alvo.closest("button[data-agendas]");
+    if (bAgs) return abrirAgendas(bAgs.dataset.agendas);
+  });
+  // abrir/fechar cliente ou lista: desenha o conteúdo só quando abre (muitas demandas)
+  $("#arvore").addEventListener("toggle", (ev) => {
+    const el = ev.target;
+    if (!el.dataset?.chave) return;
+    const estava = abertos.has(el.dataset.chave);
+    if (el.open && !estava) { abertos.add(el.dataset.chave); desenhar(); }
+    else if (!el.open && estava) { abertos.delete(el.dataset.chave); }
+  }, true);
+
+  $("#busca").oninput = desenhar;
+  for (const id of ["#selecao", "#status", "#gerente", "#ordem"]) $(id).onchange = () => { guardar(); desenhar(); };
+
+  await carregar();
+  atualizarContadores();
+</script>
+</body>
+</html>

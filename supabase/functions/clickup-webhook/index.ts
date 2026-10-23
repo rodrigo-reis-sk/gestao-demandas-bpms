@@ -10,7 +10,7 @@
 
 import { type Banco, bancoAdmin, emSegundoPlano, mensagemDeErro, responder, rpc } from "../_compartilhado/base.ts";
 import { clienteDaSincronizacao, ErroClickUp } from "../_compartilhado/clickup-api.ts";
-import { ehTarefaEstrutura, traduzirHistorico, traduzirTarefa } from "../_compartilhado/clickup-traducao.ts";
+import { traduzirHistorico, traduzirTarefa } from "../_compartilhado/clickup-traducao.ts";
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return responder(405, { erro: "Use POST." });
@@ -84,12 +84,10 @@ async function processar(banco: Banco, aviso: any) {
       if (!tarefa) {
         await rpc(banco, "marcar_tarefa_excluida", { p_origem: "clickup", p_id_externo: idTarefa });
         mensagem += " · não encontrada na origem";
-      } else if (ehTarefaEstrutura(tarefa)) {
-        mensagem += " · tarefa de estrutura, ignorada";
       } else {
         const r = await rpc<any>(banco, "gravar_tarefas", { p_origem: "clickup", p_tarefas: [traduzirTarefa(tarefa)] });
         Object.assign(resumo, { tarefas_lidas: r.lidas, tarefas_novas: r.novas, tarefas_alteradas: r.alteradas });
-        mensagem += r.ignoradas ? " · fora do filtro (consultor ou lista não marcados)" : r.novas ? " · nova" : " · atualizada";
+        mensagem += r.ignoradas ? " · fora do filtro (lista não marcada)" : r.novas ? " · nova" : " · atualizada";
       }
     }
 

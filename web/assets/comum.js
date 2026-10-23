@@ -79,6 +79,7 @@ export async function sair() {
 
 const PAGINAS = [
   ["index.html", "Início"],
+  ["demandas.html", "Demandas"],
   ["listas.html", "Listas"],
   ["consultores.html", "Consultores"],
   ["sincronizacoes.html", "Log"],
@@ -108,11 +109,36 @@ export async function montarMenu(usuario) {
 
 export async function atualizarContadores() {
   const { data } = await sb.from("vw_pendencias_gestor").select("*").maybeSingle();
-  const link = $('a[data-pagina="listas.html"]');
-  if (!link) return data;
-  link.querySelector(".contador")?.remove();
-  if (data?.listas_a_analisar) link.insertAdjacentHTML("beforeend", `<span class="contador" title="Listas a analisar">${data.listas_a_analisar}</span>`);
+  const contador = (pagina, qtd, titulo) => {
+    const link = $(`a[data-pagina="${pagina}"]`);
+    if (!link) return;
+    link.querySelector(".contador")?.remove();
+    if (qtd) link.insertAdjacentHTML("beforeend", `<span class="contador" title="${titulo}">${qtd > 999 ? "999+" : qtd}</span>`);
+  };
+  contador("listas.html", data?.listas_a_analisar, "Listas a analisar");
+  contador("demandas.html", data?.demandas_a_analisar, "Demandas a analisar");
   return data;
+}
+
+/**
+ * Busca TODAS as linhas de uma consulta, de 1000 em 1000 (o Supabase devolve no máximo 1000 por vez).
+ *   const linhas = await buscarTudo(() => sb.from("vw_demandas").select("*").order("id"));
+ */
+export async function buscarTudo(montarConsulta, tamanho = 1000) {
+  const todas = [];
+  for (let de = 0; ; de += tamanho) {
+    const { data, error } = await montarConsulta().range(de, de + tamanho - 1);
+    if (error) throw new Error(error.message);
+    todas.push(...(data ?? []));
+    if (!data || data.length < tamanho) return todas;
+  }
+}
+
+/** Minutos → "52h", "7h30", "—". */
+export function horas(min) {
+  if (!min) return "0h";
+  const h = Math.floor(min / 60), m = Math.round(min % 60);
+  return m ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`;
 }
 
 /** Pede uma sincronização agora (o resultado aparece no log). */
@@ -120,4 +146,58 @@ export async function sincronizarAgora(tipo = "manual") {
   const r = await chamarFuncao("clickup-sync", { tipo });
   aviso(r.mensagem || "Sincronização iniciada.", "ok");
   return r;
+}
+
+// ---------------------------------------------------------------- ordenação das listagens
+/**
+ * Controle de ordenação por coluna, reaproveitado pelas telas.
+ *   const ord = criarOrdenacao("consultores", { campo: "nome", dir: 1 }, redesenhar);
+ *   ord.th("nome", "Nome")          → <th> clicável com ▲/▼
+ *   ord.aplicar(lista, valores)     → lista ordenada; valores = { campo: (item) => valor }
+ * A escolha fica guardada neste navegador (por tela).
+ */
+export function criarOrdenacao(tela, padrao, aoMudar) {
+  const chave = "gestao-bpms-ordem-" + tela;
+  let estado = padrao;
+  try { estado = JSON.parse(localStorage.getItem(chave)) || padrao; } catch { /* sem armazenamento */ }
+  const comparar = (a, b) => {
+    if (a === b) return 0;
+    if (a === null || a === undefined || a === "") return 1;   // vazios sempre no fim
+    if (b === null || b === undefined || b === "") return -1;
+    if (typeof a === "number" && typeof b === "number") return a - b;
+    if (typeof a === "boolean") return (a ? 0 : 1) - (b ? 0 : 1); // "sim" primeiro
+    return String(a).localeCompare(String(b), "pt-BR", { numeric: true, sensitivity: "base" });
+  };
+  const ord = {
+    get estado() { return estado; },
+    definir(campo, dir) {
+      estado = { campo, dir: dir ?? (estado.campo === campo ? -estado.dir : 1) };
+      try { localStorage.setItem(chave, JSON.stringify(estado)); } catch { /* ignora */ }
+      aoMudar();
+    },
+    th(campo, rotulo, classe = "") {
+      const ativo = estado.campo === campo;
+      const seta = ativo ? (estado.dir === 1 ? "▲" : "▼") : "";
+      return `<th class="${classe}" aria-sort="${ativo ? (estado.dir === 1 ? "ascending" : "descending") : "none"}">
+        <button type="button" class="th-ordem" data-ordem="${campo}">${rotulo}<span class="seta">${seta}</span></button></th>`;
+    },
+    aplicar(lista, valores) {
+      const pegar = valores[estado.campo];
+      if (!pegar) return lista;
+      return [...lista].sort((a, b) => {
+        const va = pegar(a), vb = pegar(b);
+        const vazioA = va === null || va === undefined || va === "", vazioB = vb === null || vb === undefined || vb === "";
+        if (vazioA || vazioB) return comparar(va, vb);              // vazios no fim nos dois sentidos
+        return comparar(va, vb) * estado.dir;
+      });
+    },
+    /** Liga os cliques dos cabeçalhos dentro de um elemento. */
+    ligar(raiz) {
+      raiz.addEventListener("click", (ev) => {
+        const b = ev.target.closest("button.th-ordem");
+        if (b) ord.definir(b.dataset.ordem);
+      });
+    },
+  };
+  return ord;
 }

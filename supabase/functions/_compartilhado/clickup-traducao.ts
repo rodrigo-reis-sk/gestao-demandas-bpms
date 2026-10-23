@@ -13,6 +13,8 @@ export const CLICKUP = {
     detalhamento: "e74bba2f-032d-4e2e-8f37-ec19011312c0",
     origem: "a194dde3-5aca-4df7-9f94-d6a6f52fee85",
     periodo: "3d629467-1fc7-46d6-b925-42afba66df92",
+    etapa: "2bffbedf-89bd-4b12-ba60-dff41f8d3cff",
+    agenda: "af3cf86c-a293-4d1c-9916-180ad84f0a7b",
   },
   pastasAdministrativas: ["1-BP-MS", "2- Horas Cruzadas", "3- Planos de Ação"],
   tarefaBase: "1-Atendimento Base",
@@ -117,6 +119,11 @@ export function traduzirTarefa(t: any) {
     usuario_cliente: texto(t, CLICKUP.campos.usuarioCliente),
     origem_solicitacao: opcao(t, CLICKUP.campos.origem)?.nome ?? null,
     periodo: opcao(t, CLICKUP.campos.periodo)?.nome ?? null,
+    etapa: opcao(t, CLICKUP.campos.etapa)?.nome ?? null,
+    agenda_tipo: opcao(t, CLICKUP.campos.agenda)?.nome ?? null,
+    // nó de estrutura ("1-Atendimento (da) Base", subtarefa do mês): vai para o banco só para montar
+    // a hierarquia; nunca vira demanda nem agenda (D31)
+    estrutura: ehTarefaEstrutura(t),
     data_inicio: dataIso(t.start_date),
     data_vencimento: dataIso(t.due_date),
     criada_na_origem: dataIso(t.date_created),

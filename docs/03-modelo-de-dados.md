@@ -166,3 +166,14 @@ Rodados em Postgres 16 local, com `auth.uid()` e os papéis do Supabase simulado
   `registrar_analise_lista` só registra decisão de pessoa (não da regra automática).
 - `vw_pendencias_gestor` ganhou `listas_sugeridas` (última coluna).
 - Tarefas-estrutura que tinham entrado foram marcadas "ignorada" (D29).
+
+## Migração 0004 — demandas e agendas (23/10/2026)
+
+- `tarefas`: `estrutura`, `etapa`, `agenda_tipo`, `nivel`, **`papel`** (demanda / etapa / agenda / estrutura),
+  **`demanda_tarefa_id`** (a tarefa-demanda), `eh_folha`, `data_agenda`, **`minutos_agenda`**,
+  **`situacao_agenda`** (realizada / agendada / nao_executada), **`selecao`** (escolha do gestor) + quem/quando.
+- `recalcular_hierarquia()` roda no fim de cada `gravar_tarefas`.
+- `clientes_faps.carregada_em`: lista já carregada desde a data de corte (`configuracoes.sincronizacao.carga_desde`).
+- Views: **`vw_demandas`** (demanda + cliente/lista/gerente + realizadas/agendadas/planejadas),
+  **`vw_agendas`** (folhas, com consultor e se está incluída), **`vw_horas_mes`** (mês × consultor × cliente).
+- `minutos_do_periodo` desconta o almoço (12h-14h) quando o período cobre o almoço inteiro.

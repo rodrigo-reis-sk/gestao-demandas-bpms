@@ -1,5 +1,8 @@
 # 05 — Agrupamento de tarefas (a "inteligência" do repositório)
 
+> **23/10/2026 — fora do caminho principal (D37).** A hierarquia do ClickUp já diz a demanda
+> (tarefa) e as agendas (subtarefas) — ver D30. Este agrupamento por pontuação fica só para exceções.
+
 ## O problema
 
 O consultor que atende a mesma demanda por 3 dias gera 3 tarefas no ClickUp (uma por dia,

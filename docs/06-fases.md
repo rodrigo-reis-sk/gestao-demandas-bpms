@@ -26,12 +26,16 @@ Roteiro de implantação: `docs/08-implantacao.md`. Telas: https://rodrigo-reis-
 - [x] Ajustes da 1ª sincronização real: regras de listas, tela Listas por pasta, gerente FC/ED, tarefa-estrutura (migração 0003, D27–D29)
 - [ ] Validar com o piloto: 5 consultores, ~50 tarefas (checklist em `08-implantacao.md`, seção 9)
 
-## Fase 2 — Repositório, kanban e horas
-- [ ] **Repositório**: lista de pendentes com sugestões, aceitar / nova demanda / agrupar em / ignorar / desfazer
-- [ ] **Kanban**: colunas configuráveis, arrastar cards, filtros por consultor e cliente
-- [ ] **Card**: etiqueta do cliente, avatar do consultor, código, título, nº de tarefas, horas registradas × manuais, ticket Sankhya, prioridade
-- [ ] **Detalhe da demanda**: tarefas agrupadas (com link para a origem), histórico, lançamento de horas manuais
-- [ ] Ajustar pesos do agrupamento com dados reais
+## Fase 2 — Demandas, agendas, kanban e painel de horas (replanejada em 23/10/2026, D30–D37)
+- [x] Hierarquia Tarefa = demanda / Subtarefa = agenda, calculada no banco (migração 0004)
+- [x] Sincronização de tudo das listas marcadas, carga desde 01/01/2026 por lista
+- [x] Horas por agenda (estimativa → Período com almoço); realizadas × agendadas × planejadas
+- [x] Tela **Demandas**: Cliente → Lista → Demanda → Agendas, escolha Sincronizar/Não (em lote por lista) e "não contar" por agenda
+- [ ] Publicar e validar com dados reais (carga completa, conferir horas de 3 demandas contra o ClickUp)
+- [ ] **Kanban** espelhando o status do ClickUp, filtros por consultor, cliente e gerente
+- [ ] **Painel de horas** por consultor × cliente × mês desde 01/01/2026 (`vw_horas_mes`), realizadas × agendadas
+- [ ] Horas manuais por demanda (R4.2), se ainda fizer sentido
+- [ ] Repositório/agrupamento só para exceções (D37), se aparecerem
 
 ## Fase 3 — Formulário do consultor, portal do cliente e triagem
 - [ ] Migrar o protótipo (`referencia/prototipos/formulario-demandas.html`) para `web/formulario.html`, gravando pela Edge Function `formulario`

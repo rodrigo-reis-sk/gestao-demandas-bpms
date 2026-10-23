@@ -15,7 +15,7 @@
 <body>
 <main>
   <h1>Início</h1>
-  <p class="sub">Situação da sincronização com o ClickUp. O kanban chega na fase 2.</p>
+  <p class="sub">Situação da sincronização com o ClickUp. Demandas e agendas em <a href="demandas.html">Demandas</a>.</p>
 
   <div class="grade" id="numeros"></div>
 
@@ -46,7 +46,7 @@
       ["Listas sincronizando", listasMarcadas ?? 0, "listas.html"],
       ["Consultores sincronizando", marcados ?? 0, "consultores.html"],
       ["Tarefas no banco", tarefas ?? 0, null],
-      ["Pendentes de agrupar", p.tarefas_pendentes ?? 0, null],
+      ["Demandas a analisar", p.demandas_a_analisar ?? 0, "demandas.html"],
       ["Conta BPMS sem pessoa", p.responsaveis_sem_pessoa ?? 0, null],
     ];
     $("#numeros").innerHTML = cartoes.map(([t, n, href]) =>

@@ -26,18 +26,27 @@
         <option value="todos">Tudo</option>
       </select>
       <button class="primario" id="sincronizar">Sincronizar agora</button>
-      <button id="carga" title="Busca de novo as tarefas dos últimos 90 dias">Carga completa (90 dias)</button>
+      <button id="carga" title="Busca de novo todas as tarefas das listas marcadas desde a data de corte">Carga completa (desde 01/01/2026)</button>
       <button id="atualizar">Atualizar</button>
     </div>
     <div class="tabela-rolagem"><table id="tabela"></table></div>
   </div>
 </main>
 <script type="module">
-  import { sb, esc, $, exigirLogin, montarMenu, dataHora, sincronizarAgora, aviso } from "./assets/comum.js";
+  import { sb, esc, $, exigirLogin, montarMenu, dataHora, sincronizarAgora, aviso, criarOrdenacao } from "./assets/comum.js";
 
   const { usuario } = await exigirLogin();
   await montarMenu(usuario);
   let relogio = null;
+  let linhas = [];
+  const ord = criarOrdenacao("log", { campo: "inicio", dir: -1 }, () => desenhar());
+  const duracao = (s) => s.finalizado_em ? (new Date(s.finalizado_em) - new Date(s.iniciado_em)) / 1000 : null;
+  const VALORES = {
+    inicio: (s) => s.iniciado_em, tipo: (s) => s.tipo,
+    situacao: (s) => !s.finalizado_em ? 0 : s.sucesso ? 2 : 1, duracao,
+    lidas: (s) => s.tarefas_lidas ?? 0, novas: (s) => s.tarefas_novas ?? 0, alteradas: (s) => s.tarefas_alteradas ?? 0,
+    tempo: (s) => s.registros_tempo ?? 0, listas: (s) => s.listas_novas ?? 0, chamadas: (s) => s.chamadas_api ?? 0,
+  };
 
   async function carregar() {
     let q = sb.from("sincronizacoes").select("*").order("iniciado_em", { ascending: false }).limit(150);
@@ -47,12 +56,22 @@
     if (tipo === "erros") q = q.eq("sucesso", false);
     const { data, error } = await q;
     if (error) return aviso(error.message, "erro");
-    const linhas = data ?? [];
+    linhas = data ?? [];
+    desenhar();
 
-    $("#tabela").innerHTML = `<tr><th>Início</th><th>Tipo</th><th>Situação</th><th class="num">Duração</th>
-      <th class="num">Lidas</th><th class="num">Novas</th><th class="num">Alteradas</th><th class="num">Tempo</th>
-      <th class="num">Listas novas</th><th class="num">Chamadas</th><th>Mensagem</th></tr>` +
-      (linhas.length ? linhas.map((s) => {
+    // enquanto houver varredura em andamento, atualiza sozinho a cada 5 s
+    clearTimeout(relogio);
+    if (linhas.some((s) => !s.finalizado_em)) relogio = setTimeout(carregar, 5000);
+  }
+
+  function desenhar() {
+    const ordenadas = ord.aplicar(linhas, VALORES);
+
+    $("#tabela").innerHTML = `<tr>${ord.th("inicio", "Início")}${ord.th("tipo", "Tipo")}${ord.th("situacao", "Situação")}${
+      ord.th("duracao", "Duração", "num")}${ord.th("lidas", "Lidas", "num")}${ord.th("novas", "Novas", "num")}${
+      ord.th("alteradas", "Alteradas", "num")}${ord.th("tempo", "Tempo", "num")}${ord.th("listas", "Listas novas", "num")}${
+      ord.th("chamadas", "Chamadas", "num")}<th>Mensagem</th></tr>` +
+      (ordenadas.length ? ordenadas.map((s) => {
         const situacao = !s.finalizado_em ? '<span class="selo alerta">em andamento</span>'
           : s.sucesso ? '<span class="selo ok">ok</span>' : '<span class="selo erro">erro</span>';
         const dur = s.finalizado_em ? Math.round((new Date(s.finalizado_em) - new Date(s.iniciado_em)) / 1000) + " s" : "—";
@@ -61,10 +80,6 @@
           <td class="num">${s.registros_tempo ?? 0}</td><td class="num">${s.listas_novas ?? 0}</td><td class="num">${s.chamadas_api ?? 0}</td>
           <td>${esc(s.mensagem ?? "")}${s.parametros ? `<details><summary>detalhes</summary><pre>${esc(JSON.stringify(s.parametros, null, 2))}</pre></details>` : ""}</td></tr>`;
       }).join("") : `<tr><td colspan="11" class="suave">Nenhum registro.</td></tr>`);
-
-    // enquanto houver varredura em andamento, atualiza sozinho a cada 5 s
-    clearTimeout(relogio);
-    if (linhas.some((s) => !s.finalizado_em)) relogio = setTimeout(carregar, 5000);
   }
 
   async function disparar(tipo, botao) {
@@ -74,8 +89,9 @@
     finally { botao.disabled = false; }
   }
   $("#sincronizar").onclick = (e) => disparar("manual", e.target);
-  $("#carga").onclick = (e) => confirm("Buscar de novo as tarefas dos últimos 90 dias?") && disparar("carga_inicial", e.target);
+  $("#carga").onclick = (e) => confirm("Buscar de novo todas as tarefas das listas marcadas desde 01/01/2026? Pode levar algumas varreduras.") && disparar("carga_inicial", e.target);
   $("#atualizar").onclick = carregar;
+  ord.ligar($("#tabela"));
   $("#tipo").onchange = carregar;
 
   await carregar();

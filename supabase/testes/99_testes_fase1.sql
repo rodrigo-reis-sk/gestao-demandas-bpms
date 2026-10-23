@@ -101,8 +101,9 @@ begin
   if not exists (select 1 from tarefas where id_externo='n1' and minutos_periodo=180 and situacao='pendente'
                    and cliente_id=(select id from clientes where nome='Germipasto') and fap='32221') then
     raise exception 'FALHOU: n1 nao entrou como esperado'; end if;
-  if exists (select 1 from tarefas where id_externo in ('n2','n3')) then
-    raise exception 'FALHOU: entrou tarefa de consultor ou lista nao marcados'; end if;
+  -- desde a 0004 (D32) entra tudo das listas marcadas, de qualquer consultor; lista não marcada continua fora
+  if exists (select 1 from tarefas where id_externo = 'n3') then
+    raise exception 'FALHOU: entrou tarefa de lista nao marcada'; end if;
   if (select c.nome from tarefas t join tarefas_responsaveis r on r.tarefa_id=t.id join consultores c on c.id=r.consultor_id
        where t.id_externo='n4') <> 'Cleber Nascimento' then
     raise exception 'FALHOU: conta BPMS nao virou o Cleber'; end if;

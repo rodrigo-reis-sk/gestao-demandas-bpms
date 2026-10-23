@@ -70,8 +70,11 @@ Leia este arquivo inteiro antes de qualquer trabalho neste projeto.
 - **Conta ClickUp por gestor** (D11): login no sistema com o mesmo e-mail do ClickUp; cada
   gestor conecta a própria conta (OAuth), token no Vault. Criação de tarefa usa o token de
   quem clicou. Varredura usa a "conta da sincronização". Plano B: token único (D12).
-- **Listas** (D14): toda lista descoberta entra como `a_analisar` e não sincroniza até o gestor
-  marcar. Tarefa entra se consultor **e** lista estiverem marcados.
+- **Listas** (D14, D27): toda lista descoberta entra como `a_analisar` (com regras automáticas) e não
+  sincroniza até o gestor marcar. Entra **tudo** das listas marcadas, desde 01/01/2026 (D32, D33).
+- **Demanda e agenda** (D30): tarefa = demanda, subtarefa folha = agenda; a demanda é o ancestral mais alto
+  que não é estrutura. Horas da agenda = estimativa, senão Período menos almoço (D34). O gestor escolhe as
+  demandas que entram nos painéis (`tarefas.selecao`, D35). Kanban espelha o status do ClickUp (D36).
 - O ClickUp é a fonte da verdade das **tarefas e do tempo registrado**. O nosso sistema é a
   fonte da verdade das **demandas, do kanban, dos agrupamentos e das horas manuais**.
 - Tarefa apagada no ClickUp: marcar `excluida_na_origem = true`, nunca apagar a linha.
@@ -87,6 +90,7 @@ validar o piloto (checklist em `docs/08-implantacao.md` §9) e o ok nas decisõe
 Depois do no-ar: identidade visual "Grafite + lima" com tema claro/escuro/automático (D26 — toda tela nova usa
 `assets/estilo.css` + `assets/tema.js`, ver `web/README.md`); migração 0003 com regras de listas, tela Listas por
 pasta, gerente FC/ED e correção da tarefa-estrutura "1-Atendimento da Base" (D27–D29).
+Fase 2 replanejada (D30–D37): migração 0004 + tela Demandas prontas; faltam kanban e painel de horas.
 
 ## Como mexer em algo de uma fase já entregue
 

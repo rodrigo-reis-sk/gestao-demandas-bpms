@@ -42,6 +42,8 @@ Deno.test("tradução da tarefa", async () => {
   assertEquals(t.responsaveis, [{ usuario_id_externo: "222", nome_externo: "Iago Proença" }]);
   assertEquals(t.criada_na_origem, new Date(1760000000000).toISOString());
   assertEquals(t.usuario_cliente, null);
+  assertEquals(t.estrutura, false);
+  assert(traduzirTarefa({ ...TAREFA, name: "1-Atendimento da Base" }).estrutura, "estrutura vai marcada para o banco");
   assert(!("custom_fields" in t.dados_origem), "dados_origem não deve guardar as opções dos campos");
   await Deno.writeTextFile(new URL("./.saida_tarefa.json", import.meta.url), JSON.stringify([t]));
 });

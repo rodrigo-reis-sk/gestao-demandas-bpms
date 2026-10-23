@@ -123,3 +123,12 @@ Reproduzir `criar_demanda_padrao()` do legado
 - Varredura: `GET /team/{id}/task` com `assignees[]`, `list_ids[]`, `date_updated_gt`, `include_closed`,
   `subtasks`, paginado (trava de 100 páginas). Tempo: `GET /team/{id}/time_entries` em pedaços de 30 dias.
 - Tarefas de estrutura ignoradas: `1-Atendimento Base` e o padrão `AAAA-MM Mês`.
+
+## Revisão de 23/10/2026 (D30–D35)
+
+- A varredura busca **tudo das listas marcadas** (`list_ids[]`, sem `assignees[]`), inclusive subtarefas e concluídas.
+- Lista ainda não carregada: busca desde `carga_desde` (01/01/2026), uma lista por vez, até ~100 s por execução;
+  o resto continua na próxima varredura. Lista carregada: só o alterado desde a última varredura.
+- Tarefas-estrutura vão para o banco com `estrutura = true` (montam a hierarquia); campos **Etapa** e **Agenda**
+  passaram a ser lidos (`etapa`, `agenda_tipo`).
+- Registros de tempo (cronômetro) continuam na janela de 14 dias; as horas oficiais vêm das agendas (D34).

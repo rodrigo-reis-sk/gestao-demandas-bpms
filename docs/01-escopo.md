@@ -76,6 +76,12 @@ consumiu.
 - App mobile nativo (a tela web deve funcionar no celular).
 - Relatórios avançados / BI (só os totais de horas na fase 4).
 
+## Revisão de 23/10/2026 (D30–D37)
+
+Depois da 1ª sincronização real: a tarefa do ClickUp é a demanda e as subtarefas são as agendas (horas).
+R1.1 passa a ser "tudo das listas marcadas" (consultor vira filtro); R2 (repositório com agrupamento manual)
+vira exceção; R3 (kanban) espelha o status do ClickUp; R4 usa as horas das agendas desde 01/01/2026.
+
 ## Pendências respondidas (22/10/2026)
 
 | # | Pergunta | Resposta |
