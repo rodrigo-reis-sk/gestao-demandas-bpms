@@ -23,6 +23,7 @@ Roteiro de implantação: `docs/08-implantacao.md`. Telas: https://rodrigo-reis-
 - [~] Edge Function `clickup-webhook` + registro do webhook pela tela; grava quem alterou em `tarefas_historico`
 - [x] Telas mínimas: **consultores**, **listas** (a analisar no topo, contador no menu), **log da sincronização** e **início**
 - [x] Migração `0002_sincronizacao.sql` + testes (`rodar.sh`: banco, tradução do ClickUp e cliente da API)
+- [x] Ajustes da 1ª sincronização real: regras de listas, tela Listas por pasta, gerente FC/ED, tarefa-estrutura (migração 0003, D27–D29)
 - [ ] Validar com o piloto: 5 consultores, ~50 tarefas (checklist em `08-implantacao.md`, seção 9)
 
 ## Fase 2 — Repositório, kanban e horas

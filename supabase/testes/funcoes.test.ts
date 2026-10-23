@@ -54,21 +54,25 @@ Deno.test("regras de listas (legado)", () => {
   assert(encerrada("Projeto Concluído"));
   assert(!encerrada("Germipasto 32221 Avulso"));
   const linhas = traduzirListas(
-    [{ id: "P1", name: "PRO-INFO", lists: [{ id: "L9", name: "Por-Info 31826 Avulso" }] },
+    [{ id: "P1", name: "PRO-INFO - ED", lists: [{ id: "L9", name: "Por-Info 31826 Avulso" }, { id: "L5", name: "ICCAP 28124 P2" }] },
      { id: "P2", name: "3- Planos de Ação", lists: [{ id: "L8", name: "Planos" }] },
      { id: "P3", name: "Z Cliente Antigo", lists: [{ id: "L7", name: "Antigo 11111 Avulso" }] }],
     [{ id: "L6", name: "Solta" }],
   );
-  assertEquals(linhas.map((l) => [l.lista_id_externo, l.fap, l.tipo, l.ativa, l.administrativa, l.nome_cliente]), [
-    ["L9", "31826", "avulso", true, false, "Por-Info"],
-    ["L8", null, "outro", true, true, null],
-    ["L7", "11111", "avulso", false, false, "Antigo"],
-    ["L6", null, "outro", true, false, null],
+  assertEquals(linhas.map((l) => [l.lista_id_externo, l.fap, l.tipo, l.ativa, l.administrativa, l.nome_cliente, l.sigla_gerente]), [
+    ["L9", "31826", "avulso", true, false, "Por-Info", "ED"],
+    ["L5", "28124", "projeto", true, false, "ICCAP", "ED"],
+    ["L8", null, "outro", true, true, "3- Planos de Ação", null],
+    ["L7", "11111", "avulso", false, false, "Antigo", null],
+    ["L6", null, "outro", true, false, null, null],
   ]);
 });
 
 Deno.test("tarefas de estrutura ficam de fora", () => {
   assert(ehTarefaEstrutura({ name: "1-Atendimento Base" }));
+  assert(ehTarefaEstrutura({ name: "1-Atendimento da Base" }));                       // grafia real no ClickUp
+  assert(ehTarefaEstrutura({ name: "Base do cliente", status: { status: "atendimento base" } }));
+  assert(!ehTarefaEstrutura({ name: "2-Serviços", status: { status: "em andamento" } }));
   assert(ehTarefaEstrutura({ name: "2026-10 Outubro" }));
   assert(ehTarefaEstrutura({ name: "2026-03 Março" }));
   assert(!ehTarefaEstrutura({ name: "2026-10 Outubro ajuste nota" }));

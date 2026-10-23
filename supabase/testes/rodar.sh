@@ -9,10 +9,11 @@ dropdb --if-exists teste_bpms && createdb teste_bpms
 for f in "$DIR/00_supabase_simulado.sql" \
          "$RAIZ/migrations/0001_estrutura_inicial.sql" \
          "$RAIZ/migrations/0002_sincronizacao.sql" \
+         "$RAIZ/migrations/0003_listas_e_estrutura.sql" \
          "$RAIZ/seed.sql" "$RAIZ/seed.sql" \
-         "$DIR/99_testes.sql" "$DIR/99_testes_fase1.sql"; do
+         "$DIR/99_testes.sql" "$DIR/99_testes_fase1.sql" "$DIR/99_testes_0003.sql"; do
   echo "### $(basename "$f")"
-  psql -q -v ON_ERROR_STOP=1 -d teste_bpms -f "$f"
+  (cd "$DIR" && psql -q -v ON_ERROR_STOP=1 -d teste_bpms -f "$f")
 done
 # Edge Functions: testes de tradução e do cliente da API (precisa do Deno)
 if command -v deno >/dev/null; then

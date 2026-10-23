@@ -155,3 +155,14 @@ Rodados em Postgres 16 local, com `auth.uid()` e os papéis do Supabase simulado
 - agendamento sem duplicar; chamada do pg_cron leva a chave certa;
 - tradução de uma tarefa no formato da API (dropdown por índice e por id, campo Detalhamento, Período) grava certo no banco;
 - cliente da API espera no HTTP 429, repete no 500, pagina com trava e manda o token pessoal sem "Bearer".
+
+## Migração 0003 (23/10/2026)
+
+- `clientes_faps.tipo` aceita **interno** (listas de pastas administrativas); novas colunas `sugerida`
+  (sugestão de sincronizar, D27) e `sigla_gerente` (FC/ED, D28).
+- `clientes.gerente_projetos_id` → consultor gerente de projetos, preenchido pela sigla da pasta
+  (`configuracoes.gerentes_por_sigla`).
+- `gravar_listas` reescrita com as regras automáticas (só enquanto ninguém decidiu a lista);
+  `registrar_analise_lista` só registra decisão de pessoa (não da regra automática).
+- `vw_pendencias_gestor` ganhou `listas_sugeridas` (última coluna).
+- Tarefas-estrutura que tinham entrado foram marcadas "ignorada" (D29).

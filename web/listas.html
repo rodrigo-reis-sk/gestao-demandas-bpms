@@ -11,124 +11,216 @@
   <link rel="stylesheet" href="assets/estilo.css">
   <script src="assets/tema.js"></script>
   <script src="config.js"></script>
+  <style>
+    /* Só desta tela: grupos por pasta (cliente) e controle Sincronizar / Não */
+    .barra { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+    .barra input[type=text] { width: 260px; }
+    .barra .resumo { color: var(--suave); font-size: .86rem; margin-left: auto; }
+    .sugestoes { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px;
+      border: 1px solid var(--borda); border-left: 4px solid var(--acento); border-radius: var(--raio);
+      background: var(--destaque); margin-bottom: 14px; }
+    .grupo { padding: 0; overflow: hidden; margin-bottom: 12px; }
+    .grupo-cab { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px;
+      background: var(--cartao-2); border-bottom: 1px solid var(--borda); }
+    .grupo-cab h2 { margin: 0; font-size: .98rem; }
+    .grupo-cab .qtd { color: var(--suave); font-size: .82rem; }
+    .grupo-cab .acoes { margin-left: auto; }
+    .grupo table td { padding: 6px 14px; }
+    .grupo table tr:last-child td { border-bottom: 0; }
+    .lista-nome { font-weight: 600; }
+    .lista-cli { color: var(--suave); font-size: .82rem; }
+    .lista-cli select { font-size: .82rem; padding: 2px 6px; }
+    .col-tipo { width: 90px; } .col-fap { width: 70px; color: var(--suave); font-variant-numeric: tabular-nums; }
+    .col-sit { width: 250px; text-align: right; white-space: nowrap; }
+    .segmento { display: inline-flex; border: 1px solid var(--borda); border-radius: var(--raio); overflow: hidden; vertical-align: middle; }
+    .segmento button { border: 0; border-radius: 0; padding: 3px 11px; font-size: .82rem; background: var(--cartao); color: var(--suave); }
+    .segmento button + button { border-left: 1px solid var(--borda); }
+    .segmento button.sim[aria-pressed="true"] { background: var(--acento); color: var(--acento-texto); font-weight: 600; }
+    .segmento button.nao[aria-pressed="true"] { background: var(--texto); color: var(--fundo); font-weight: 600; }
+    .marcas { display: inline-flex; gap: 4px; margin-right: 8px; }
+    .selo.sugerida { color: var(--acento-forte); border-color: currentColor; }
+    .selo.gerente { font-weight: 600; }
+    @media (max-width: 720px) {
+      .col-tipo, .col-fap { display: none; }
+      .col-sit { width: auto; }
+      .barra .resumo { margin-left: 0; width: 100%; }
+    }
+  </style>
 </head>
 <body>
 <main>
   <h1>Listas do ClickUp</h1>
-  <p class="sub">A sincronização descobre todas as listas do espaço PMO BP-MS. Lista nova entra <b>a analisar</b> e não
-    sincroniza até você decidir. Listas encerradas (nome com "Z" ou "Concluída") entram como não sincronizar.</p>
+  <p class="sub">Escolha quais listas entram na sincronização. Pastas administrativas e listas encerradas ("Z") já entram como
+    <b>não sincronizar</b>. Listas Avulso de clientes conhecidos aparecem como <b>sugeridas</b>.</p>
 
-  <div class="cartao">
-    <div class="acoes" style="margin-bottom:10px">
-      <input type="text" id="busca" placeholder="Buscar cliente, pasta, lista ou FAP" style="max-width:280px">
-      <select id="filtro">
-        <option value="a_analisar">A analisar</option>
-        <option value="sincronizar">Sincronizando</option>
-        <option value="nao_sincronizar">Não sincronizar</option>
-        <option value="todas">Todas</option>
-      </select>
-      <label style="margin:0;display:flex;gap:6px;align-items:center"><input type="checkbox" id="encerradas"> mostrar encerradas</label>
-      <span class="suave" id="resumo"></span>
-    </div>
-    <div class="acoes" style="margin-bottom:10px">
-      <span class="suave">Selecionadas:</span>
-      <button class="pequeno" data-lote="sincronizar">Sincronizar</button>
-      <button class="pequeno" data-lote="nao_sincronizar">Não sincronizar</button>
-      <button class="pequeno" data-lote="a_analisar">Voltar para a analisar</button>
-    </div>
-    <div class="tabela-rolagem"><table id="tabela"></table></div>
+  <div id="sugestoes"></div>
+
+  <div class="barra">
+    <input type="text" id="busca" placeholder="Buscar cliente, lista ou FAP">
+    <select id="filtro" aria-label="Situação">
+      <option value="a_analisar">A analisar</option>
+      <option value="sugeridas">Sugeridas</option>
+      <option value="sincronizar">Sincronizando</option>
+      <option value="nao_sincronizar">Não sincronizar</option>
+      <option value="todas">Todas</option>
+    </select>
+    <select id="tipo" aria-label="Tipo">
+      <option value="">Todos os tipos</option>
+      <option value="avulso">Avulso</option>
+      <option value="projeto">Projeto</option>
+      <option value="interno">Interno</option>
+      <option value="outro">Outro</option>
+    </select>
+    <select id="gerente" aria-label="Gerente de projetos"><option value="">Todos os gerentes</option></select>
+    <label style="margin:0;display:flex;gap:6px;align-items:center"><input type="checkbox" id="encerradas"> encerradas</label>
+    <span class="resumo" id="resumo"></span>
   </div>
+
+  <div id="grupos"></div>
 </main>
 <script type="module">
-  import { sb, esc, $, exigirLogin, montarMenu, atualizarContadores, aviso, dataHora } from "./assets/comum.js";
+  import { sb, esc, $, exigirLogin, montarMenu, atualizarContadores, aviso } from "./assets/comum.js";
 
   const { usuario } = await exigirLogin();
   await montarMenu(usuario);
 
-  const SITUACAO = {
-    a_analisar: ['<span class="selo alerta">a analisar</span>', 0],
-    sincronizar: ['<span class="selo ok">sincronizando</span>', 1],
-    nao_sincronizar: ['<span class="selo">não sincronizar</span>', 2],
-  };
-  let listas = [], clientes = [];
+  const TIPOS = { avulso: "Avulso", projeto: "Projeto", interno: "Interno", outro: "Outro" };
+  let listas = [], clientes = [], gerentes = {};   // gerentes: sigla → nome
 
   async function carregar() {
-    const [l, c] = await Promise.all([
-      sb.from("clientes_faps").select("*").order("descoberta_em", { ascending: false }),
+    const [l, c, cfg, cons] = await Promise.all([
+      sb.from("clientes_faps").select("*"),
       sb.from("clientes").select("id, nome").order("nome"),
+      sb.from("configuracoes").select("valor").eq("chave", "gerentes_por_sigla").maybeSingle(),
+      sb.from("consultores").select("nome, email"),
     ]);
     if (l.error) return aviso(l.error.message, "erro");
     listas = l.data ?? [];
     clientes = c.data ?? [];
+    gerentes = {};
+    for (const [sigla, email] of Object.entries(cfg.data?.valor ?? {})) {
+      gerentes[sigla] = (cons.data ?? []).find((p) => p.email?.toLowerCase() === String(email).toLowerCase())?.nome ?? sigla;
+    }
+    const siglas = [...new Set(listas.map((f) => f.sigla_gerente).filter(Boolean))].sort();
+    $("#gerente").innerHTML = `<option value="">Todos os gerentes</option>` +
+      siglas.map((s) => `<option value="${esc(s)}">${esc(s)} · ${esc(gerentes[s] ?? "")}</option>`).join("") +
+      `<option value="-">Sem gerente</option>`;
     desenhar();
     atualizarContadores();
   }
 
   const nomeCliente = (id) => clientes.find((c) => c.id === id)?.nome ?? "";
+  // "GERMIPASTO - FC" → "GERMIPASTO"
+  const nomePasta = (f) => f.lista_id_externo ? (f.pasta_nome ?? "(sem pasta)").replace(/\s-\s*[A-Z]{2,3}\s*$/, "") : "Do cadastro — ainda não encontradas no ClickUp";
+
+  function visiveis() {
+    const busca = $("#busca").value.trim().toLowerCase();
+    const filtro = $("#filtro").value, tipo = $("#tipo").value, gerente = $("#gerente").value;
+    const encerradas = $("#encerradas").checked;
+    return listas.filter((f) =>
+      (filtro === "todas" || (filtro === "sugeridas" ? f.sugerida && f.situacao_sincronizacao === "a_analisar" : f.situacao_sincronizacao === filtro)) &&
+      (!tipo || f.tipo === tipo) &&
+      (!gerente || (gerente === "-" ? !f.sigla_gerente : f.sigla_gerente === gerente)) &&
+      (encerradas || f.ativa || f.situacao_sincronizacao === "sincronizar") &&
+      (!busca || [nomeCliente(f.cliente_id), f.pasta_nome, f.nome_lista, f.fap].join(" ").toLowerCase().includes(busca)));
+  }
 
   function desenhar() {
-    const busca = $("#busca").value.trim().toLowerCase();
-    const filtro = $("#filtro").value;
-    const mostrarEncerradas = $("#encerradas").checked;
-    const vis = listas
-      .filter((f) => filtro === "todas" || f.situacao_sincronizacao === filtro)
-      .filter((f) => mostrarEncerradas || f.ativa || f.situacao_sincronizacao === "sincronizar")
-      .filter((f) => !busca || [nomeCliente(f.cliente_id), f.pasta_nome, f.nome_lista, f.fap].join(" ").toLowerCase().includes(busca))
-      .sort((a, b) => SITUACAO[a.situacao_sincronizacao][1] - SITUACAO[b.situacao_sincronizacao][1]
-        || nomeCliente(a.cliente_id).localeCompare(nomeCliente(b.cliente_id)) || (a.nome_lista ?? "").localeCompare(b.nome_lista ?? ""));
-
     const qtd = (s) => listas.filter((f) => f.situacao_sincronizacao === s).length;
+    const sugeridas = listas.filter((f) => f.sugerida && f.situacao_sincronizacao === "a_analisar");
     $("#resumo").textContent = `${qtd("a_analisar")} a analisar · ${qtd("sincronizar")} sincronizando · ${qtd("nao_sincronizar")} não sincronizar`;
+    $("#sugestoes").innerHTML = sugeridas.length ? `<div class="sugestoes">
+      <span><b>${sugeridas.length}</b> lista(s) Avulso de clientes conhecidos sugeridas para sincronizar.</span>
+      <button class="primario pequeno" id="aceitar">Aceitar sugestões</button>
+      <button class="pequeno" id="ver-sugeridas">Ver quais são</button></div>` : "";
+    $("#aceitar")?.addEventListener("click", () => definir(sugeridas.map((f) => f.id), "sincronizar"));
+    $("#ver-sugeridas")?.addEventListener("click", () => { $("#filtro").value = "sugeridas"; desenhar(); });
 
-    const opcoesCliente = (sel) => `<option value="">(sem cliente)</option>` +
-      clientes.map((c) => `<option value="${c.id}" ${c.id === sel ? "selected" : ""}>${esc(c.nome)}</option>`).join("");
+    // agrupa por pasta; pastas com algo a analisar primeiro, cadastro sem lista por último
+    const grupos = new Map();
+    for (const f of visiveis()) {
+      const chave = f.lista_id_externo ? (f.pasta_id_externo ?? f.pasta_nome ?? "-") : "~cadastro";
+      if (!grupos.has(chave)) grupos.set(chave, []);
+      grupos.get(chave).push(f);
+    }
+    const ordem = [...grupos.entries()].sort(([ka, a], [kb, b]) =>
+      (ka === "~cadastro") - (kb === "~cadastro")
+      || b.some((f) => f.situacao_sincronizacao === "a_analisar") - a.some((f) => f.situacao_sincronizacao === "a_analisar")
+      || nomePasta(a[0]).localeCompare(nomePasta(b[0])));
 
-    $("#tabela").innerHTML = `<tr><th><input type="checkbox" id="todas"></th><th>Cliente</th><th>Pasta / lista no ClickUp</th>
-      <th>FAP</th><th>Situação</th><th>Ações</th></tr>` +
-      (vis.length ? vis.map((f) => `<tr class="${f.situacao_sincronizacao === "a_analisar" ? "destaque" : ""}">
-        <td><input type="checkbox" class="sel" value="${f.id}"></td>
-        <td><select data-cliente="${f.id}">${opcoesCliente(f.cliente_id)}</select></td>
-        <td>${f.lista_id_externo ? `${esc(f.pasta_nome ?? "(sem pasta)")} / <b>${esc(f.nome_lista)}</b>`
-              : '<span class="suave">FAP do cadastro, ainda não encontrada no ClickUp</span>'}
-            ${f.ativa ? "" : ' <span class="selo">encerrada</span>'}
-            <br><span class="suave" style="font-size:.8rem">descoberta ${dataHora(f.descoberta_em)}${f.analisada_em ? " · decidida " + dataHora(f.analisada_em) : ""}</span></td>
-        <td>${esc(f.fap ?? "—")}</td>
-        <td>${SITUACAO[f.situacao_sincronizacao][0]}</td>
-        <td><div class="acoes">
-          ${f.situacao_sincronizacao !== "sincronizar" ? `<button class="pequeno" data-id="${f.id}" data-sit="sincronizar">Sincronizar</button>` : ""}
-          ${f.situacao_sincronizacao !== "nao_sincronizar" ? `<button class="pequeno" data-id="${f.id}" data-sit="nao_sincronizar">Não sincronizar</button>` : ""}
-        </div></td></tr>`).join("")
-      : `<tr><td colspan="6" class="suave">Nada por aqui.</td></tr>`);
-
-    $("#todas").onchange = (e) => document.querySelectorAll(".sel").forEach((c) => (c.checked = e.target.checked));
+    $("#grupos").innerHTML = ordem.length ? ordem.map(([chave, itens]) => {
+      itens.sort((a, b) => (a.nome_lista ?? a.fap ?? "").localeCompare(b.nome_lista ?? b.fap ?? ""));
+      const sigla = itens[0].sigla_gerente;
+      return `<section class="cartao grupo">
+        <div class="grupo-cab">
+          <h2>${esc(nomePasta(itens[0]))}</h2>
+          ${sigla ? `<span class="selo gerente" title="Gerente de projetos">${esc(sigla)}${gerentes[sigla] ? " · " + esc(gerentes[sigla]) : ""}</span>` : ""}
+          <span class="qtd">${itens.length} lista(s)</span>
+          ${chave === "~cadastro" ? `<span class="qtd">— somem sozinhas quando a lista aparecer no ClickUp</span>` : `<span class="acoes">
+            <button class="pequeno" data-grupo="${esc(chave)}" data-sit="sincronizar">Sincronizar todas</button>
+            <button class="pequeno" data-grupo="${esc(chave)}" data-sit="nao_sincronizar">Não sincronizar todas</button>
+          </span>`}
+        </div>
+        <table>${itens.map(linha).join("")}</table>
+      </section>`;
+    }).join("") : `<div class="cartao suave">Nada por aqui com esses filtros.</div>`;
+    window.__grupos = grupos;
   }
 
-  async function definirSituacao(ids, situacao) {
-    if (!ids.length) return aviso("Selecione ao menos uma lista.");
+  function linha(f) {
+    const sit = f.situacao_sincronizacao;
+    const cliente = f.cliente_id
+      ? esc(nomeCliente(f.cliente_id))
+      : `<select data-cliente="${f.id}" aria-label="Cliente da lista"><option value="">definir cliente…</option>${
+          clientes.map((c) => `<option value="${c.id}">${esc(c.nome)}</option>`).join("")}</select>`;
+    return `<tr class="${sit === "a_analisar" ? "destaque" : ""}">
+      <td><div class="lista-nome">${esc(f.nome_lista ?? "FAP " + (f.fap ?? ""))}${f.ativa ? "" : ' <span class="selo">encerrada</span>'}</div>
+        <div class="lista-cli">${f.tipo === "interno" ? "uso interno" : cliente}</div></td>
+      <td class="col-tipo"><span class="selo">${TIPOS[f.tipo] ?? f.tipo}</span></td>
+      <td class="col-fap">${esc(f.fap ?? "—")}</td>
+      <td class="col-sit">
+        <span class="marcas">${sit === "a_analisar" ? `<span class="selo alerta">a analisar</span>` : ""}${
+          sit === "a_analisar" && f.sugerida ? `<span class="selo sugerida">sugerida</span>` : ""}</span>
+        <span class="segmento" role="group" aria-label="Sincronizar ${esc(f.nome_lista ?? "")}">
+          <button class="sim" data-id="${f.id}" data-sit="sincronizar" aria-pressed="${sit === "sincronizar"}">Sincronizar</button>
+          <button class="nao" data-id="${f.id}" data-sit="nao_sincronizar" aria-pressed="${sit === "nao_sincronizar"}">Não</button>
+        </span>
+      </td></tr>`;
+  }
+
+  async function definir(ids, situacao) {
+    if (!ids.length) return;
     const { error } = await sb.from("clientes_faps").update({ situacao_sincronizacao: situacao }).in("id", ids);
     if (error) return aviso(error.message, "erro");
+    for (const f of listas) if (ids.includes(f.id)) f.situacao_sincronizacao = situacao;
     aviso(situacao === "sincronizar"
       ? `${ids.length} lista(s) marcada(s). A próxima sincronização traz as tarefas dos últimos 90 dias.`
-      : `${ids.length} lista(s) atualizada(s).`, "ok");
-    carregar();
+      : `${ids.length} lista(s) marcada(s) como não sincronizar.`, "ok");
+    desenhar();
+    atualizarContadores();
   }
 
-  $("#tabela").addEventListener("click", (ev) => {
+  $("#grupos").addEventListener("click", (ev) => {
     const b = ev.target.closest("button[data-sit]");
-    if (b) definirSituacao([b.dataset.id], b.dataset.sit);
+    if (!b) return;
+    if (b.dataset.grupo) {
+      const itens = window.__grupos.get(b.dataset.grupo) ?? [];
+      definir(itens.map((f) => f.id), b.dataset.sit);
+    } else if (b.getAttribute("aria-pressed") !== "true") {
+      definir([b.dataset.id], b.dataset.sit);
+    }
   });
-  $("#tabela").addEventListener("change", async (ev) => {
+  $("#grupos").addEventListener("change", async (ev) => {
     const s = ev.target.closest("select[data-cliente]");
-    if (!s) return;
-    const { error } = await sb.from("clientes_faps").update({ cliente_id: s.value || null }).eq("id", s.dataset.cliente);
-    error ? aviso(error.message, "erro") : aviso("Cliente da lista atualizado.", "ok");
-    listas.find((f) => f.id === s.dataset.cliente).cliente_id = s.value || null;
+    if (!s || !s.value) return;
+    const { error } = await sb.from("clientes_faps").update({ cliente_id: s.value }).eq("id", s.dataset.cliente);
+    if (error) return aviso(error.message, "erro");
+    listas.find((f) => f.id === s.dataset.cliente).cliente_id = s.value;
+    aviso("Cliente da lista definido.", "ok");
+    desenhar();
   });
-  document.querySelectorAll("[data-lote]").forEach((b) => b.onclick = () =>
-    definirSituacao([...document.querySelectorAll(".sel:checked")].map((c) => c.value), b.dataset.lote));
-  $("#busca").oninput = desenhar;
-  $("#filtro").onchange = desenhar;
-  $("#encerradas").onchange = desenhar;
+  for (const id of ["#busca"]) $(id).oninput = desenhar;
+  for (const id of ["#filtro", "#tipo", "#gerente", "#encerradas"]) $(id).onchange = desenhar;
 
   await carregar();
 </script>

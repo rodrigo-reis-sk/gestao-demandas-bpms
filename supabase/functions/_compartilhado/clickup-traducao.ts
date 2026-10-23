@@ -81,10 +81,17 @@ function camposResumidos(tarefa: any) {
 
 // ------------------------------------------------------------------ tarefas
 
-/** "1-Atendimento Base" e a subtarefa do mês ("2026-10 Outubro") são estrutura, não atendimento. */
+/**
+ * Tarefas de estrutura (não são atendimentos):
+ *   • "1-Atendimento Base" / "1-Atendimento da Base" (no ClickUp aparecem as duas grafias),
+ *     ou qualquer tarefa no status "atendimento base";
+ *   • a subtarefa do mês ("2026-10 Outubro").
+ */
 export function ehTarefaEstrutura(tarefa: any): boolean {
   const nome = (tarefa.name ?? "").trim();
-  return normalizar(nome) === normalizar(CLICKUP.tarefaBase) || /^\d{4}-\d{2}\s+\S+$/.test(nome);
+  return /^\d+ atendimento (da )?base$/.test(normalizar(nome))
+    || normalizar(tarefa.status?.status) === "atendimento base"
+    || /^\d{4}-\d{2}\s+\S+$/.test(nome);
 }
 
 export function traduzirTarefa(t: any) {
@@ -135,17 +142,21 @@ export function traduzirListas(pastas: any[], listasSoltas: any[]) {
     const fap = extrairFap(lista.name);
     const nomeLista: string = lista.name ?? "";
     const n = normalizar(nomeLista);
+    // "GERMIPASTO - FC" → sigla do gerente de projetos "FC" e nome do cliente "GERMIPASTO"
+    const sufixo = pasta?.name?.match(/\s-\s*([A-Z]{2,3})\s*$/);
     return {
       lista_id_externo: String(lista.id),
       nome_lista: nomeLista,
       pasta_id_externo: pasta ? String(pasta.id) : null,
       pasta_nome: pasta?.name ?? null,
       fap,
-      tipo: n.includes("avulso") ? "avulso" : n.includes("projeto") ? "projeto" : "outro",
+      // Avulso pelo nome; com FAP mas sem "Avulso" (ex.: "ICCAP 28124 P2") = projeto
+      tipo: n.includes("avulso") ? "avulso" : (fap || n.includes("projeto")) ? "projeto" : "outro",
       ativa: !encerrada(nomeLista) && !(pasta && encerrada(pasta.name)),
       administrativa: !!pasta && administrativas.includes(normalizar(pasta.name)),
       // "Germipasto 32221 Avulso" → "Germipasto" (ajuda a achar o cliente quando a pasta tem outro nome)
-      nome_cliente: fap ? nomeLista.split(fap)[0].trim() : null,
+      nome_cliente: fap ? nomeLista.split(fap)[0].trim() : (pasta?.name ?? "").replace(/\s-\s*[A-Z]{2,3}\s*$/, "").trim() || null,
+      sigla_gerente: sufixo?.[1] ?? null,
     };
   };
   for (const pasta of pastas) for (const lista of pasta.lists ?? []) linhas.push(montar(lista, pasta));
