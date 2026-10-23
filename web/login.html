@@ -4,13 +4,21 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Entrar · Gestão BP-MS</title>
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700&display=swap">
   <link rel="stylesheet" href="assets/estilo.css">
+  <script src="assets/tema.js"></script>
   <script src="config.js"></script>
 </head>
 <body>
+<div class="login-tema" id="lugar-tema"></div>
 <main>
   <form class="cartao login" id="form">
-    <h1>Gestão BP-MS</h1>
+    <span class="marca"><img src="assets/logo.svg" width="36" height="36" alt="">
+      <span class="marca-nome">Demandas<small>BP-MS</small></span></span>
+    <h1>Entrar</h1>
     <p class="sub">Entre com o mesmo e-mail que você usa no ClickUp.</p>
     <label for="email">E-mail</label>
     <input type="email" id="email" autocomplete="username" required>
@@ -24,6 +32,8 @@
 </main>
 <script type="module">
   import { sb, aviso, $ } from "./assets/comum.js";
+
+  document.getElementById("lugar-tema").append(window.criarSeletorTema());
 
   const volta = new URLSearchParams(location.search).get("volta") || "index.html";
   // só volta para páginas daqui (evita redirecionar para fora)

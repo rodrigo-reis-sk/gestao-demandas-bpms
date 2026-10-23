@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prévia de identidade · Gestão BP-MS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700;800&family=Space+Grotesk:wght@500;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 Inter, system-ui, sans-serif; background: #e9e9e7; color: #222; }
+  header.topo-pagina { padding: 18px 20px 6px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+  header.topo-pagina h1 { margin: 0; font-size: 18px; }
+  header.topo-pagina p { margin: 2px 0 0; color: #555; }
+  .alternar { display: inline-flex; border: 1px solid #bbb; border-radius: 999px; overflow: hidden; background: #fff; }
+  .alternar button { border: 0; background: none; padding: 7px 14px; font: inherit; cursor: pointer; }
+  .alternar button.ativo { background: #222; color: #fff; }
+  .grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 18px; padding: 14px 20px 30px; }
+  .rotulo { font-weight: 600; margin: 0 0 8px; display: flex; gap: 8px; align-items: baseline; }
+  .rotulo span { color: #666; font-weight: 400; font-size: 12px; }
+
+  /* ---------------- tokens por identidade ---------------- */
+  .cerrado { --fundo:#F7F3EE; --cartao:#FFFFFF; --texto:#2B2420; --suave:#7A6B60; --borda:#E7DDD2;
+    --prim:#B4532A; --prim-txt:#FFFFFF; --apoio:#4F6B3A; --dest:#D9A441; --dest-fundo:#FBF1DC;
+    --ok:#4F6B3A; --alerta:#B7791F; --erro:#B42318; --titulo:Manrope; --raio:10px; }
+  .cerrado.escuro { --fundo:#17130F; --cartao:#221C17; --texto:#F1E9E0; --suave:#B3A397; --borda:#3A3029;
+    --prim:#E07A4A; --prim-txt:#1A120D; --apoio:#8DB06B; --dest:#E6B85C; --dest-fundo:#33281A;
+    --ok:#8DB06B; --alerta:#E6B85C; --erro:#F0857A; }
+
+  .pantanal { --fundo:#F2F6F7; --cartao:#FFFFFF; --texto:#12262B; --suave:#5B7177; --borda:#D8E3E6;
+    --prim:#0E6E7A; --prim-txt:#FFFFFF; --apoio:#3B8C6E; --dest:#E8A33D; --dest-fundo:#FDF3E1;
+    --ok:#2F7D5E; --alerta:#B87414; --erro:#C0392B; --titulo:"Space Grotesk"; --raio:8px; }
+  .pantanal.escuro { --fundo:#0B1A1E; --cartao:#12262B; --texto:#E3EEF0; --suave:#8FA7AC; --borda:#21393F;
+    --prim:#3BB3C2; --prim-txt:#06171B; --apoio:#5CC09A; --dest:#F0B65A; --dest-fundo:#2B2614;
+    --ok:#5CC09A; --alerta:#F0B65A; --erro:#F08A7E; }
+
+  .grafite { --fundo:#F5F5F4; --cartao:#FFFFFF; --texto:#1C1C1A; --suave:#6B6B66; --borda:#E2E2DF;
+    --prim:#1C1C1A; --prim-txt:#FFFFFF; --apoio:#6B6B66; --dest:#A3D61F; --dest-fundo:#F2F9DD;
+    --ok:#5E8A0E; --alerta:#A86A00; --erro:#C2341D; --titulo:Sora; --raio:6px; }
+  .grafite.escuro { --fundo:#111110; --cartao:#1B1B19; --texto:#ECECEA; --suave:#9C9C96; --borda:#2E2E2B;
+    --prim:#A3D61F; --prim-txt:#111110; --apoio:#9C9C96; --dest:#A3D61F; --dest-fundo:#232A12;
+    --ok:#A3D61F; --alerta:#E0A33A; --erro:#F07A65; }
+
+  /* ---------------- mini aplicação ---------------- */
+  .app { background: var(--fundo); color: var(--texto); border-radius: 12px; overflow: hidden; border: 1px solid var(--borda); box-shadow: 0 6px 20px rgba(0,0,0,.08); transition: background .2s, color .2s; }
+  .nav { display: flex; align-items: center; gap: 4px; padding: 10px 12px; background: var(--cartao); border-bottom: 1px solid var(--borda); flex-wrap: wrap; }
+  .marca { display: flex; align-items: center; gap: 8px; font-family: var(--titulo); font-weight: 700; margin-right: 8px; letter-spacing: -.01em; }
+  .marca small { display: block; font: 500 10px Inter, sans-serif; color: var(--suave); letter-spacing: .04em; text-transform: uppercase; }
+  .nav a { padding: 5px 9px; border-radius: var(--raio); color: var(--texto); text-decoration: none; font-size: 13px; }
+  .nav a.ativo { background: var(--fundo); color: var(--prim); font-weight: 600; }
+  .cont { display: inline-block; background: var(--dest); color: #1b1b1b; border-radius: 9px; font-size: 10px; padding: 0 6px; margin-left: 3px; font-weight: 600; }
+  .miolo { padding: 14px; }
+  .miolo h2 { font-family: var(--titulo); font-size: 20px; margin: 0 0 2px; letter-spacing: -.02em; }
+  .miolo .sub { color: var(--suave); margin: 0 0 12px; font-size: 12.5px; }
+  .numeros { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+  .num { background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: 10px; }
+  .num div:first-child { color: var(--suave); font-size: 11.5px; }
+  .num b { font-family: var(--titulo); font-size: 24px; }
+  .num.prim b { color: var(--prim); }
+  .bloco { background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: 10px; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { text-align: left; color: var(--suave); font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; padding: 4px 6px; }
+  td { padding: 7px 6px; border-top: 1px solid var(--borda); }
+  tr.dest td { background: var(--dest-fundo); }
+  .selo { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 99px; border: 1px solid currentColor; white-space: nowrap; }
+  .selo.ok { color: var(--ok); } .selo.alerta { color: var(--alerta); } .selo.erro { color: var(--erro); }
+  .acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn { font: 500 12.5px Inter, sans-serif; border-radius: var(--raio); padding: 7px 12px; border: 1px solid var(--borda); background: var(--cartao); color: var(--texto); }
+  .btn.prim { background: var(--prim); border-color: var(--prim); color: var(--prim-txt); }
+  .kanban { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .card { background: var(--cartao); border: 1px solid var(--borda); border-left: 4px solid var(--etq, var(--prim)); border-radius: var(--raio); padding: 8px 10px; font-size: 12px; }
+  .card .cod { color: var(--suave); font-size: 11px; }
+  .card .tit { font-weight: 600; margin: 2px 0 6px; }
+  .card .rod { display: flex; justify-content: space-between; align-items: center; color: var(--suave); font-size: 11px; }
+  .av { width: 22px; height: 22px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 10px; font-weight: 700; background: var(--apoio); color: #fff; }
+  .tema-btn { margin-left: auto; display: inline-flex; border: 1px solid var(--borda); border-radius: 99px; overflow: hidden; }
+  .tema-btn span { padding: 3px 8px; font-size: 11px; color: var(--suave); }
+  .tema-btn span.on { background: var(--prim); color: var(--prim-txt); }
+  .nota { font-size: 12px; color: #555; margin-top: 8px; }
+  @media (max-width: 420px) { .numeros { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+<header class="topo-pagina">
+  <div>
+    <h1>Gestão BP-MS — prévia das 3 identidades</h1>
+    <p>Mesma tela (início + listas + um card do futuro kanban) em cada proposta. Use o botão para ver claro e escuro.</p>
+  </div>
+  <div class="alternar" role="group" aria-label="Tema da prévia">
+    <button class="ativo" data-t="claro">Claro</button>
+    <button data-t="escuro">Escuro</button>
+    <button data-t="lado">Lado a lado</button>
+  </div>
+</header>
+
+<main class="grade" id="grade"></main>
+
+<template id="modelo">
+  <section>
+    <p class="rotulo"></p>
+    <div class="app">
+      <nav class="nav">
+        <span class="marca"><span class="logo"></span><span>Demandas<small>BP-MS</small></span></span>
+        <a class="ativo">Início</a><a>Listas<span class="cont">3</span></a><a>Consultores</a><a>Log</a>
+        <span class="tema-btn"><span>☀</span><span>◐</span><span>☾</span></span>
+      </nav>
+      <div class="miolo">
+        <h2>Início</h2>
+        <p class="sub">Última varredura há 6 min — 4 novas, 12 alteradas</p>
+        <div class="numeros">
+          <div class="num"><div>Listas a analisar</div><b>3</b></div>
+          <div class="num prim"><div>Tarefas pendentes</div><b>27</b></div>
+          <div class="num"><div>Consultores ativos</div><b>5</b></div>
+        </div>
+        <div class="bloco">
+          <table>
+            <tr><th>Cliente</th><th>Lista</th><th>Situação</th></tr>
+            <tr class="dest"><td>Germipasto</td><td>Germipasto 32221 Avulso</td><td><span class="selo alerta">a analisar</span></td></tr>
+            <tr><td>Soldamaq</td><td>Soldamaq 32222 Avulso</td><td><span class="selo ok">sincronizando</span></td></tr>
+            <tr><td>Pro-Info</td><td>Z-Por-Info 31826</td><td><span class="selo erro">erro</span></td></tr>
+          </table>
+        </div>
+        <div class="kanban">
+          <div class="card" style="--etq:#D9A441"><div class="cod">DEM-0042 · Germipasto</div><div class="tit">Relatório de comissão por vendedor</div>
+            <div class="rod"><span>3 tarefas · 6h10 / 5h</span><span class="av">IP</span></div></div>
+          <div class="card" style="--etq:#4F86C6"><div class="cod">DEM-0043 · Soldamaq</div><div class="tit">Ajuste na nota de devolução</div>
+            <div class="rod"><span>1 tarefa · 1h30</span><span class="av">CN</span></div></div>
+        </div>
+        <div class="acoes" style="margin-top:12px"><button class="btn prim">Sincronizar agora</button><button class="btn">Ver log</button></div>
+      </div>
+    </div>
+    <p class="nota"></p>
+  </section>
+</template>
+
+<script>
+  const LOGOS = {
+    cerrado: `<svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect x="5" y="5" width="20" height="20" rx="4" transform="rotate(45 15 15)" fill="var(--prim)"/><text x="15" y="19.5" text-anchor="middle" font-family="Manrope" font-weight="800" font-size="11" fill="var(--prim-txt)">BM</text></svg>`,
+    pantanal: `<svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect width="30" height="30" rx="8" fill="var(--prim)"/><path d="M9 8h6a7 7 0 0 1 0 14H9z" fill="none" stroke="var(--prim-txt)" stroke-width="2.4"/><path d="M6 17c3-2 5 2 8 0s5-2 10 0" fill="none" stroke="var(--dest)" stroke-width="2.2" stroke-linecap="round"/></svg>`,
+    grafite: `<svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect width="30" height="30" rx="6" fill="var(--texto)"/><rect x="7" y="8" width="4" height="14" rx="1.5" fill="var(--dest)"/><rect x="13" y="8" width="4" height="9" rx="1.5" fill="var(--fundo)"/><rect x="19" y="8" width="4" height="11" rx="1.5" fill="var(--fundo)"/></svg>`,
+  };
+  const IDENT = [
+    ["cerrado", "1 · Cerrado", "terracota + verde-cerrado + ocre · Manrope", "Quente e própria do MS; terracota destaca ações sem cansar a vista."],
+    ["pantanal", "2 · Pantanal noturno", "petróleo + verde-água + âmbar · Space Grotesk", "Sóbria e técnica; a mais confortável no escuro."],
+    ["grafite", "3 · Grafite + lima", "grafite + lima elétrico · Sora", "Minimalista; o lima aparece só no que importa."],
+  ];
+  let modo = "claro";
+
+  function desenhar() {
+    const grade = document.getElementById("grade");
+    grade.innerHTML = "";
+    const modelo = document.getElementById("modelo");
+    for (const [cls, nome, desc, nota] of IDENT) {
+      const temas = modo === "lado" ? ["claro", "escuro"] : [modo];
+      for (const t of temas) {
+        const n = modelo.content.cloneNode(true);
+        n.querySelector(".rotulo").innerHTML = `${nome} <span>${desc}${modo === "lado" ? " · " + t : ""}</span>`;
+        const app = n.querySelector(".app");
+        app.classList.add(cls);
+        if (t === "escuro") app.classList.add("escuro");
+        n.querySelector(".logo").innerHTML = LOGOS[cls];
+        const icones = n.querySelectorAll(".tema-btn span");
+        icones[t === "escuro" ? 2 : 0].classList.add("on");
+        n.querySelector(".nota").textContent = nota;
+        grade.append(n);
+      }
+    }
+  }
+  document.querySelectorAll(".alternar button").forEach((b) => b.onclick = () => {
+    document.querySelectorAll(".alternar button").forEach((x) => x.classList.toggle("ativo", x === b));
+    modo = b.dataset.t;
+    desenhar();
+  });
+  desenhar();
+</script>
+</body>
+</html>

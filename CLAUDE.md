@@ -79,8 +79,9 @@ Leia este arquivo inteiro antes de qualquer trabalho neste projeto.
 
 ## Estado atual
 
-Fase 0 concluída em 22/10/2026. **Fase 1: código pronto e testado localmente em 22/10/2026**
-(migração `0002_sincronizacao.sql`, Edge Functions `clickup-conectar` / `clickup-sync` / `clickup-webhook`,
-telas em `web/`). Falta: o Rodrigo criar o projeto Supabase, fazer o teste P9 (app OAuth) e o repositório
-no GitHub; depois implantar seguindo `docs/08-implantacao.md` e validar o piloto. Decisões D18–D24 propostas (P12).
+Fase 1 **no ar** desde 23/10/2026: Supabase `bucicoxjvokbsnynsmfh`, funções publicadas, telas em
+https://rodrigo-reis-sk.github.io/gestao-demandas-bpms/ (repositório público `rodrigo-reis-sk/gestao-demandas-bpms`).
+Conexão ao ClickUp por **token pessoal de cada gestor** (D19; o Rodrigo não tem permissão para criar app OAuth).
+E-mail do Rodrigo no ClickUp e no login: `reis.c.rodrigo@gmail.com`. Falta: confirmar agendamento e webhook,
+validar o piloto (checklist em `docs/08-implantacao.md` §9) e o ok nas decisões D18, D20–D24 (P12).
 Testes: `bash supabase/testes/rodar.sh` (precisa de Postgres 16 local; com Deno, testa também as funções).

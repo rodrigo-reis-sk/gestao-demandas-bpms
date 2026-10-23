@@ -21,3 +21,10 @@ Configuração pública em `config.js` (URL do Supabase, chave anon e Client ID 
 
 Código comum: `assets/comum.js` (login, menu com contador de listas a analisar, chamadas às Edge
 Functions) e `assets/estilo.css`.
+
+## Identidade visual (D26)
+
+"Grafite + lima": cores definidas como variáveis no topo de `assets/estilo.css` (tema claro em `:root`,
+escuro em `:root[data-tema="escuro"]`). Para mudar a cor de algo, troque a variável, não o elemento.
+`assets/tema.js` aplica o tema antes de desenhar a página e cria o seletor ☀ / 🖥 / ☾ do menu.
+Toda página nova deve ter no `<head>`: as fontes (Inter + Sora), `assets/estilo.css`, `assets/tema.js` e o favicon `assets/logo.svg`.

@@ -85,15 +85,23 @@ const PAGINAS = [
   ["perfil.html", "Meu perfil"],
 ];
 
-/** Monta o menu do topo, com o contador de listas a analisar. */
+/** Logo + nome do sistema (usado no menu e no login). */
+export function marcaHtml() {
+  return `<a class="marca" href="index.html"><img src="assets/logo.svg" width="30" height="30" alt="">
+    <span class="marca-nome">Demandas<small>BP-MS</small></span></a>`;
+}
+
+/** Monta o menu do topo, com o contador de listas a analisar e o seletor de tema. */
 export async function montarMenu(usuario) {
   const atual = location.pathname.split("/").pop() || "index.html";
   const topo = document.createElement("nav");
   topo.className = "topo";
-  topo.innerHTML = `<span class="marca">Gestão BP-MS</span>` +
-    PAGINAS.map(([href, nome]) => `<a href="${href}" class="${href === atual ? "ativo" : ""}" data-pagina="${href}">${nome}</a>`).join("") +
-    `<span class="direita">${esc(usuario.nome)} <button class="pequeno" id="botao-sair">Sair</button></span>`;
+  topo.innerHTML = marcaHtml() +
+    PAGINAS.map(([href, nome]) => `<a href="${href}" class="pagina ${href === atual ? "ativo" : ""}" data-pagina="${href}">${nome}</a>`).join("") +
+    `<span class="direita"><span class="nome-usuario">${esc(usuario.nome)}</span><span id="lugar-tema"></span>
+      <button class="pequeno" id="botao-sair">Sair</button></span>`;
   document.body.prepend(topo);
+  if (window.criarSeletorTema) $("#lugar-tema").replaceWith(window.criarSeletorTema());
   $("#botao-sair").onclick = sair;
   await atualizarContadores();
 }
