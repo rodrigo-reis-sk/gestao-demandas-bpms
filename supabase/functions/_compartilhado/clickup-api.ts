@@ -118,6 +118,11 @@ export class ClienteClickUp {
     return this.chamar("GET", `/task/${id}`);
   }
 
+  /** Tarefa completa com a lista das subtarefas diretas em "subtasks" (usada no "Sincronizar" da demanda). */
+  tarefaComSubtarefas(id: string) {
+    return this.chamar("GET", `/task/${id}`, { include_subtasks: true });
+  }
+
   /**
    * Tarefas alteradas desde uma data, só dos responsáveis e listas informados.
    * Uma busca para vários consultores; paginada (100 por página).

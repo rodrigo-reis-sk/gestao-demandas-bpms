@@ -34,6 +34,7 @@ Roteiro de implantação: `docs/08-implantacao.md`. Telas: https://rodrigo-reis-
 - [x] Ajustes após comparação com o ClickUp (Inovvati): junção de repetidos, mães que faltam, corte pela data da agenda (migração 0005, D38–D40)
 - [x] Hierarquia robusta + visibilidade (migração 0006, D41–D42)
 - [x] Tela única Demandas (listas + demandas + agendas), padrão "conta", FAP pelo número, script de reinício (migração 0007, D43–D46)
+- [~] Botão "↻ Sincronizar" por demanda e "Considera no gerenciamento" Sim/Não (D48) — falta publicar a função `clickup-sync`
 - [ ] Publicar, reiniciar a sincronização e validar com dados reais (carga completa, conferir horas de 3 demandas contra o ClickUp)
 - [ ] **Kanban** espelhando o status do ClickUp, filtros por consultor, cliente e gerente
 - [ ] **Painel de horas** por consultor × cliente × mês desde 01/01/2026 (`vw_horas_mes`), realizadas × agendadas

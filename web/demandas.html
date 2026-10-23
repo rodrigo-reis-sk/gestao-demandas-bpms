@@ -44,7 +44,11 @@
     .d-nome a { color: var(--suave); text-decoration: none; font-size: .8rem; margin-left: 4px; }
     .d-selos { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; align-items: center; }
     .d-meta { color: var(--suave); font-size: .82rem; margin-top: 4px; }
-    .d-direita { margin-left: auto; }
+    .d-direita { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+    .d-direita .rotulo { color: var(--suave); font-size: .78rem; }
+    .bt-sinc { padding: 3px 10px; font-size: .82rem; }
+    .bt-sinc[disabled] { opacity: .6; cursor: progress; }
+    .d-sinc { color: var(--suave); font-size: .75rem; width: 100%; text-align: right; }
     .barra-horas { display: flex; height: 7px; border-radius: 4px; overflow: hidden; background: var(--borda); margin: 10px 0 4px; }
     .barra-horas .real { background: var(--acento); }
     .barra-horas .agend { background: color-mix(in srgb, var(--suave) 55%, transparent); }
@@ -77,8 +81,8 @@
 <body>
 <main>
   <h1>Demandas</h1>
-  <p class="sub">Marque as <b>listas</b> do ClickUp que entram na sincronização; tudo o que vier delas já conta nos painéis.
-    Desmarque só as <b>demandas</b> ou <b>agendas</b> que não devem contar. Tarefa = demanda · subtarefa = agenda.</p>
+  <p class="sub">Marque as <b>listas</b> do ClickUp que entram na sincronização; tudo o que vier delas já é considerado no gerenciamento.
+    Marque "Não" só nas <b>demandas</b> ou <b>agendas</b> que não devem ser consideradas. "↻ Sincronizar" atualiza a demanda na hora. Tarefa = demanda · subtarefa = agenda.</p>
 
   <div id="sugestoes"></div>
 
@@ -92,8 +96,8 @@
     </select>
     <select id="filtroDemanda" aria-label="Demandas">
       <option value="">Todas as demandas</option>
-      <option value="sincronizar">Só as que contam</option>
-      <option value="nao_sincronizar">Só as desmarcadas</option>
+      <option value="sincronizar">Só as consideradas</option>
+      <option value="nao_sincronizar">Só as não consideradas</option>
     </select>
     <select id="gerente" aria-label="Gerente"><option value="">Todos os gerentes</option></select>
     <select id="ordem" aria-label="Ordenar por">
@@ -110,13 +114,14 @@
   <div id="arvore"></div>
 </main>
 <script type="module">
-  import { sb, esc, $, exigirLogin, montarMenu, atualizarContadores, aviso, buscarTudo, horas } from "./assets/comum.js";
+  import { sb, esc, $, exigirLogin, montarMenu, atualizarContadores, aviso, buscarTudo, horas, chamarFuncao } from "./assets/comum.js";
 
   const { usuario } = await exigirLogin();
   await montarMenu(usuario);
 
   let listas = [], demandas = [];
   const abertos = new Set(), agendasAbertas = new Set(), cacheAgendas = new Map();
+  const sincronizando = new Set(), sincronizadaEm = new Map();   // botão "↻ Sincronizar" da demanda
   const TIPOS = { avulso: "Avulso", projeto: "Projeto", interno: "Interno", outro: "Outro" };
 
   // filtros lembrados neste navegador
@@ -249,8 +254,8 @@
         </span></div></summary>
       ${aberto ? `<div class="lista-corpo">
         ${ds.length ? `<div class="lista-acoes">
-            <button class="pequeno" data-lote="${f.id}" data-sel="sincronizar">Contar as ${ds.length} exibidas</button>
-            <button class="pequeno" data-lote="${f.id}" data-sel="nao_sincronizar">Não contar as ${ds.length} exibidas</button></div>
+            <button class="pequeno" data-lote="${f.id}" data-sel="sincronizar">Considerar as ${ds.length} exibidas</button>
+            <button class="pequeno" data-lote="${f.id}" data-sel="nao_sincronizar">Não considerar as ${ds.length} exibidas</button></div>
           <div class="demandas">${ds.map(cartao).join("")}</div>`
         : `<div class="aviso-lista">${f.carregada_em ? "Nenhuma demanda com agenda a partir de 01/01/2026." : "A lista entra na próxima varredura (Log → Sincronizar agora)."}</div>`}
       </div>` : ""}
@@ -273,10 +278,14 @@
           <div class="d-meta">${[d.responsavel_nome, datas, d.qtd_agendas ? `${d.qtd_agendas} agenda(s)` : ""].filter(Boolean).map(esc).join(" · ")}</div>
         </div>
         <div class="d-direita">
-          <span class="segmento" role="group" aria-label="A demanda conta nos painéis">
-            <button class="sim" data-sel="sincronizar" aria-pressed="${d.selecao !== "nao_sincronizar"}">Conta</button>
+          <button class="pequeno bt-sinc" data-sinc="${d.id}" title="Buscar agora no ClickUp esta demanda e as agendas"
+            ${sincronizando.has(d.id) ? "disabled" : ""}>${sincronizando.has(d.id) ? "Sincronizando…" : "↻ Sincronizar"}</button>
+          <span class="rotulo">Considera no gerenciamento</span>
+          <span class="segmento" role="group" aria-label="Considera no gerenciamento">
+            <button class="sim" data-sel="sincronizar" aria-pressed="${d.selecao !== "nao_sincronizar"}">Sim</button>
             <button class="nao" data-sel="nao_sincronizar" aria-pressed="${d.selecao === "nao_sincronizar"}">Não</button>
           </span>
+          ${sincronizadaEm.has(d.id) ? `<span class="d-sinc">atualizada às ${sincronizadaEm.get(d.id)}</span>` : ""}
         </div>
       </div>
       <div class="barra-horas" title="realizadas / agendadas / planejadas">
@@ -304,7 +313,7 @@
         <span class="txt"><b>${dataCurta(a.data_agenda) || "sem data"}${a.consultor_nome ? " · " + esc(a.consultor_nome) : ""}</b>
           <small>${esc(a.nome)}${a.periodo ? " · " + esc(a.periodo) : ""}${a.no_periodo === false ? " · antes da data de corte, fora da conta" : ""}</small></span>
         <span class="h">${a.minutos_agenda ? horas(a.minutos_agenda) : "—"}</span>
-        <button class="pequeno" data-agenda="${a.id}" data-sel="${a.selecao === "nao_sincronizar" ? "sincronizar" : "nao_sincronizar"}">${a.selecao === "nao_sincronizar" ? "Contar" : "Não contar"}</button>
+        <button class="pequeno" data-agenda="${a.id}" data-sel="${a.selecao === "nao_sincronizar" ? "sincronizar" : "nao_sincronizar"}">${a.selecao === "nao_sincronizar" ? "Considerar" : "Não considerar"}</button>
       </div>`;
     }).join("") : `<div class="suave">Sem agendas.</div>`);
   }
@@ -344,6 +353,31 @@
     desenhar();
   }
 
+  // "↻ Sincronizar": busca a demanda no ClickUp agora (Edge Function) e recarrega só ela e as agendas
+  async function sincronizarDemanda(id) {
+    if (sincronizando.has(id)) return;
+    sincronizando.add(id);
+    desenhar();
+    try {
+      const r = await chamarFuncao("clickup-sync", { acao: "sincronizar_demanda", tarefa_id: id });
+      const [{ data: d }, { data: ags }] = await Promise.all([
+        sb.from("vw_demandas").select("*").eq("id", id).maybeSingle(),
+        sb.from("vw_agendas").select("*").eq("demanda_id", id).order("data_agenda"),
+      ]);
+      const i = demandas.findIndex((x) => x.id === id);
+      if (d && i >= 0) Object.assign(demandas[i], d);
+      else if (!d && i >= 0) demandas.splice(i, 1);           // saiu do período/visibilidade (D42)
+      cacheAgendas.set(id, ags ?? []);
+      sincronizadaEm.set(id, new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
+      aviso(r.mensagem || "Demanda atualizada.", "ok");
+    } catch (e) {
+      aviso(e.message, "erro");
+    } finally {
+      sincronizando.delete(id);
+      desenhar();
+    }
+  }
+
   async function abrirAgendas(id) {
     if (agendasAbertas.has(id)) { agendasAbertas.delete(id); return desenhar(); }
     agendasAbertas.add(id);
@@ -372,6 +406,8 @@
     }
     const bSel = alvo.closest(".demanda .segmento button[data-sel]");
     if (bSel && bSel.getAttribute("aria-pressed") !== "true") return escolherDemandas([bSel.closest(".demanda").dataset.id], bSel.dataset.sel);
+    const bSinc = alvo.closest("button[data-sinc]");
+    if (bSinc) return sincronizarDemanda(bSinc.dataset.sinc);
     const bAgs = alvo.closest("button[data-agendas]");
     if (bAgs) return abrirAgendas(bAgs.dataset.agendas);
   });

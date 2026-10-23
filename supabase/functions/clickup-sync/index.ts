@@ -8,6 +8,8 @@
 //   { "tipo": "periodica" | "manual" | "carga_inicial" }    → sincroniza (responde na hora, roda em 2º plano)
 //   { "acao": "registrar_webhook" }                          → cria/recria o webhook no ClickUp (só gestor)
 //   { "acao": "situacao_webhook" }                           → mostra o webhook registrado (só gestor)
+//   { "acao": "sincronizar_demanda", "tarefa_id": "<uuid>" }  → atualiza na hora UMA demanda, suas etapas e
+//                                                               agendas (só gestor; responde ao terminar)
 //
 // Passos da sincronização:
 //   1. membros do workspace → consultores (pelo e-mail);
@@ -42,6 +44,13 @@ Deno.serve(async (req) => {
     if (corpo.acao === "registrar_webhook" || corpo.acao === "situacao_webhook") {
       if (!usuario) return responder(403, { erro: "Ação só pela tela, por um gestor." });
       return responder(200, await tratarWebhook(banco, corpo.acao === "registrar_webhook"));
+    }
+
+    if (corpo.acao === "sincronizar_demanda") {
+      if (!usuario) return responder(403, { erro: "Ação só pela tela, por um gestor." });
+      if (typeof corpo.tarefa_id !== "string" || !corpo.tarefa_id) return responder(400, { erro: "Informe tarefa_id." });
+      const r = await sincronizarDemanda(banco, corpo.tarefa_id, usuario.email ?? null);
+      return responder(r.erro ? 400 : 200, r);
     }
 
     const tipo = ["periodica", "manual", "carga_inicial"].includes(corpo.tipo) ? corpo.tipo : "manual";
@@ -200,6 +209,78 @@ async function sincronizar(banco: Banco, logId: number, tipo: string) {
     }
     await finalizar(banco, logId, false, totais, cliente?.chamadas ?? 0, parametros, msg);
   }
+}
+
+/**
+ * "Sincronizar" de uma demanda pela tela: busca no ClickUp a demanda e tudo abaixo dela, sem esperar a varredura.
+ *   • desce pelas subtarefas (cada tarefa vem com a lista das filhas diretas);
+ *   • inclui também as agendas que o banco já liga à demanda (atendimentos repetidos juntados, D38);
+ *   • tarefa que sumiu na origem → excluida_na_origem (D8).
+ * Os registros de tempo (cronômetro) continuam vindo pela varredura: a gravação deles é por período e usuário.
+ */
+async function sincronizarDemanda(banco: Banco, tarefaId: string, pedidoPor: string | null) {
+  const MAX_TAREFAS = 80, LIMITE_MS = 45_000;
+  const inicio = Date.now(), iniciadoEm = new Date().toISOString();
+
+  const { data: demanda } = await banco.from("tarefas").select("id, id_externo, origem, nome")
+    .eq("id", tarefaId).maybeSingle();
+  if (!demanda) return { erro: "Demanda não encontrada." };
+  if (demanda.origem !== "clickup" || !demanda.id_externo) return { erro: "Esta demanda não veio do ClickUp." };
+
+  const { data: ligadas } = await banco.from("tarefas").select("id_externo")
+    .eq("demanda_tarefa_id", demanda.id).eq("origem", "clickup").not("id_externo", "is", null);
+
+  const fila = [demanda.id_externo as string, ...(ligadas ?? []).map((t) => t.id_externo as string)];
+  const vistos = new Set<string>();
+  const achadas: any[] = [], sumiram: string[] = [];
+  let incompleta = false, sucesso = true, mensagem = "", chamadas = 0;
+  let resumo = { tarefas_lidas: 0, tarefas_novas: 0, tarefas_alteradas: 0 };
+
+  try {
+    const { cliente, contaId } = await clienteDaSincronizacao(banco);
+    try {
+      while (fila.length) {
+        const id = fila.shift()!;
+        if (vistos.has(id)) continue;
+        if (vistos.size >= MAX_TAREFAS || Date.now() - inicio > LIMITE_MS) { incompleta = true; break; }
+        vistos.add(id);
+        try {
+          const t = await cliente.tarefaComSubtarefas(id);
+          for (const f of t.subtasks ?? []) if (f?.id && !vistos.has(String(f.id))) fila.push(String(f.id));
+          delete t.subtasks;              // a tradução usa a tarefa como vem da busca normal
+          achadas.push(t);
+        } catch (e) {
+          if (e instanceof ErroClickUp && (e.status === 404 || e.status === 403)) sumiram.push(id);
+          else throw e;
+        }
+      }
+    } finally {
+      chamadas = cliente.chamadas;
+    }
+
+    if (achadas.length) {
+      const r = await rpc<any>(banco, "gravar_tarefas", { p_origem: "clickup", p_tarefas: achadas.map(traduzirTarefa) });
+      resumo = { tarefas_lidas: r.lidas, tarefas_novas: r.novas, tarefas_alteradas: r.alteradas };
+    }
+    for (const id of sumiram) await rpc(banco, "marcar_tarefa_excluida", { p_origem: "clickup", p_id_externo: id });
+    if (contaId) await rpc(banco, "registrar_uso_conta", { p_conta_id: contaId });
+
+    mensagem = `Demanda "${demanda.nome}": ${achadas.length} tarefa(s) lida(s), ${resumo.tarefas_novas} nova(s), `
+      + `${resumo.tarefas_alteradas} alterada(s)`
+      + (sumiram.length ? `, ${sumiram.length} apagada(s) na origem` : "")
+      + (incompleta ? " · parou no limite; o resto vem na varredura" : "");
+  } catch (e) {
+    console.error(e);
+    sucesso = false;
+    mensagem = `Demanda "${demanda.nome}": ERRO: ` + mensagemDeErro(e);
+  }
+
+  await banco.from("sincronizacoes").insert({
+    sistema: "clickup", tipo: "manual", iniciado_em: iniciadoEm, finalizado_em: new Date().toISOString(),
+    sucesso, chamadas_api: chamadas, mensagem: mensagem.slice(0, 2000), ...resumo,
+    parametros: { acao: "sincronizar_demanda", demanda: demanda.id_externo, pedido_por: pedidoPor },
+  });
+  return sucesso ? { ok: true, mensagem, ...resumo, apagadas: sumiram.length, incompleta } : { erro: mensagem };
 }
 
 async function finalizar(
