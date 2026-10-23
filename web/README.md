@@ -28,3 +28,10 @@ Functions) e `assets/estilo.css`.
 escuro em `:root[data-tema="escuro"]`). Para mudar a cor de algo, troque a variável, não o elemento.
 `assets/tema.js` aplica o tema antes de desenhar a página e cria o seletor ☀ / 🖥 / ☾ do menu.
 Toda página nova deve ter no `<head>`: as fontes (Inter + Sora), `assets/estilo.css`, `assets/tema.js` e o favicon `assets/logo.svg`.
+
+## Ordenação das listagens
+
+Tabelas: `criarOrdenacao(tela, padrão, redesenhar)` em `assets/comum.js` — cabeçalho clicável (▲/▼),
+vazios sempre no fim, escolha guardada no navegador. Em uso em Consultores e Log; a tela Listas
+(agrupada por pasta) tem o seletor "Ordenar" (a analisar primeiro, cliente A→Z / Z→A, gerente,
+mais listas, descoberta mais recente, FAP). Toda listagem nova deve usar o mesmo padrão.

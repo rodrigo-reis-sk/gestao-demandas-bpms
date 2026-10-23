@@ -84,4 +84,13 @@ https://rodrigo-reis-sk.github.io/gestao-demandas-bpms/ (repositório público `
 Conexão ao ClickUp por **token pessoal de cada gestor** (D19; o Rodrigo não tem permissão para criar app OAuth).
 E-mail do Rodrigo no ClickUp e no login: `reis.c.rodrigo@gmail.com`. Falta: confirmar agendamento e webhook,
 validar o piloto (checklist em `docs/08-implantacao.md` §9) e o ok nas decisões D18, D20–D24 (P12).
+Depois do no-ar: identidade visual "Grafite + lima" com tema claro/escuro/automático (D26 — toda tela nova usa
+`assets/estilo.css` + `assets/tema.js`, ver `web/README.md`); migração 0003 com regras de listas, tela Listas por
+pasta, gerente FC/ED e correção da tarefa-estrutura "1-Atendimento da Base" (D27–D29).
+
+## Como mexer em algo de uma fase já entregue
+
+Pode voltar a qualquer fase a qualquer momento. Banco: **nunca editar migração já aplicada** — criar a próxima
+(`0004_...`). Telas e funções: editar o arquivo e publicar de novo. Registrar a decisão em `07-decisoes.md`
+e a mudança no checklist da fase em `06-fases.md`.
 Testes: `bash supabase/testes/rodar.sh` (precisa de Postgres 16 local; com Deno, testa também as funções).
