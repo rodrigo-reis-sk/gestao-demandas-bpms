@@ -35,8 +35,18 @@ Roteiro de implantação: `docs/08-implantacao.md`. Telas: https://rodrigo-reis-
 - [x] Ajustes após comparação com o ClickUp (Inovvati): junção de repetidos, mães que faltam, corte pela data da agenda (migração 0005, D38–D40)
 - [x] Hierarquia robusta + visibilidade (migração 0006, D41–D42)
 - [x] Tela única Demandas (listas + demandas + agendas), padrão "conta", FAP pelo número, script de reinício (migração 0007, D43–D46)
-- [~] Botão "↻ Sincronizar" por demanda e "Considera no gerenciamento" Sim/Não (D48) — falta publicar a função `clickup-sync`
-- [ ] Publicar, reiniciar a sincronização e validar com dados reais (carga completa, conferir horas de 3 demandas contra o ClickUp)
+- [x] Botão "↻ Sincronizar" por demanda e "Considera no gerenciamento" Sim/Não (D48) — função publicada em 23/10/2026
+- [~] Publicar, reiniciar a sincronização e validar com dados reais — publicado, reiniciado e carga completa (50 listas) em 23/10/2026.
+  Conferência de 3 demandas contra o ClickUp (23/10/2026):
+  - Soldamaq "Demandas Marketing": **bate** (38h realizadas = estimativa; 44h rastreadas = ClickUp).
+  - Semalo "Demandas do financeiro": **bate** (as 5 agendas de 2026 estão no banco; 4h realizadas, 16h agendadas).
+  - Inovvati "2-Atendimento Folha": **não bate** — faltam 2 agendas de set/2026 (4h) que estão dentro de uma subtarefa de mês
+    ("2026-09 Setembro") **abaixo de uma demanda real**; o banco as trata como demandas soltas. Mesmo caso em CG Telhas (4 demandas soltas no total).
+    Somando as 2, bate com o ClickUp (50h estimadas, 6h rastreadas).
+  - Webhook: rajada de eventos (~220 em 30 min) com ~30% de falhas por tempo esgotado (`gravar_tarefas` recalcula a hierarquia inteira
+    a cada evento, até de lista não marcada). Nada se perdeu: a varredura recupera as das listas marcadas.
+  - Correção pronta e testada: migração 0008 (D49 hierarquia, D50 recálculo por lista, D51 agendas **atrasadas**) e tela Demandas — falta aplicar e publicar. Motivo do D51: 332 agendas com data já passada (1.567h) contam como agendadas, contra 40 futuras (222h); 108 sem data.
+- [~] Correções da validação: migração 0008 + tela Demandas com "atrasadas" (D49–D51) — falta `db push` e publicar
 - [ ] **Kanban** espelhando o status do ClickUp, filtros por consultor, cliente e gerente
 - [ ] **Painel de horas** por consultor × cliente × mês desde 01/01/2026 (`vw_horas_mes`), realizadas × agendadas
 - [ ] Horas manuais por demanda (R4.2), se ainda fizer sentido

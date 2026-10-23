@@ -52,6 +52,8 @@
     .barra-horas { display: flex; height: 7px; border-radius: 4px; overflow: hidden; background: var(--borda); margin: 10px 0 4px; }
     .barra-horas .real { background: var(--acento); }
     .barra-horas .agend { background: color-mix(in srgb, var(--suave) 55%, transparent); }
+    .barra-horas .atras { background: var(--alerta); }
+    .d-horas .atras b { color: var(--alerta); }
     .d-horas { display: flex; justify-content: space-between; color: var(--suave); font-size: .8rem; gap: 10px; flex-wrap: wrap; }
     .d-horas b { color: var(--texto); font-weight: 600; }
     .d-detalhe { margin-top: 10px; border-top: 1px dashed var(--borda); padding-top: 10px; }
@@ -61,6 +63,7 @@
     .agenda .ic { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: .72rem; flex: none; }
     .agenda .ic.realizada { background: var(--ok); color: var(--fundo); }
     .agenda .ic.agendada { border: 2px solid var(--suave); }
+    .agenda .ic.atrasada { border: 2px solid var(--alerta); color: var(--alerta); }
     .agenda .ic.nao_executada { border: 2px dashed var(--erro); color: var(--erro); }
     .agenda .txt { flex: 1; min-width: 0; }
     .agenda .txt b { font-weight: 600; }
@@ -263,7 +266,7 @@
   }
 
   function cartao(d) {
-    const total = Math.max(d.minutos_planejados ?? 0, d.minutos_realizados + d.minutos_agendados) || 1;
+    const total = Math.max(d.minutos_planejados ?? 0, d.minutos_realizados + d.minutos_agendados + (d.minutos_atrasados ?? 0)) || 1;
     const datas = d.primeira_agenda ? `${dataCurta(d.primeira_agenda)} → ${dataCurta(d.ultima_agenda)}`
       : d.data_inicio || d.data_vencimento ? `${dataCurta(d.data_inicio)} → ${dataCurta(d.data_vencimento)}` : "";
     return `<article class="demanda ${d.selecao}" data-id="${d.id}">
@@ -288,12 +291,13 @@
           ${sincronizadaEm.has(d.id) ? `<span class="d-sinc">atualizada às ${sincronizadaEm.get(d.id)}</span>` : ""}
         </div>
       </div>
-      <div class="barra-horas" title="realizadas / agendadas / planejadas">
+      <div class="barra-horas" title="realizadas / atrasadas (data passada sem baixa) / agendadas / planejadas">
         <span class="real" style="width:${(100 * d.minutos_realizados / total).toFixed(1)}%"></span>
+        <span class="atras" style="width:${(100 * (d.minutos_atrasados ?? 0) / total).toFixed(1)}%"></span>
         <span class="agend" style="width:${(100 * d.minutos_agendados / total).toFixed(1)}%"></span>
       </div>
       <div class="d-horas">
-        <span><b>${horas(d.minutos_realizados)}</b> realizadas · <b>${horas(d.minutos_agendados)}</b> agendadas</span>
+        <span><b>${horas(d.minutos_realizados)}</b> realizadas · <b>${horas(d.minutos_agendados)}</b> agendadas${d.minutos_atrasados ? ` · <span class="atras" title="Data já passou e o ClickUp não está como concluído"><b>${horas(d.minutos_atrasados)}</b> atrasadas</span>` : ""}</span>
         <span>${d.minutos_planejados ? `<b>${horas(d.minutos_planejados)}</b> planejadas` : "sem horas planejadas"}</span>
       </div>
       <button class="link-agendas" data-agendas="${d.id}">${agendasAbertas.has(d.id) ? "Ocultar agendas ▴" : "Ver agendas e detalhamento ▾"}</button>
@@ -307,9 +311,9 @@
     if (!ags) return det + `<div class="suave">Carregando agendas…</div>`;
     return det + `<div class="rot">Agendas (${ags.length})</div>` + (ags.length ? ags.map((a) => {
       const fora = a.selecao === "nao_sincronizar" || a.situacao_agenda === "nao_executada" || a.no_periodo === false;
-      const ic = { realizada: "✓", agendada: "", nao_executada: "✕" }[a.situacao_agenda] ?? "";
+      const ic = { realizada: "✓", agendada: "", atrasada: "!", nao_executada: "✕" }[a.situacao_agenda] ?? "";
       return `<div class="agenda ${fora ? "fora" : ""}">
-        <span class="ic ${a.situacao_agenda}" title="${esc(a.status ?? "")}">${ic}</span>
+        <span class="ic ${a.situacao_agenda}" title="${esc(a.status ?? "")}${a.situacao_agenda === "atrasada" ? " — data passada sem baixa" : ""}">${ic}</span>
         <span class="txt"><b>${dataCurta(a.data_agenda) || "sem data"}${a.consultor_nome ? " · " + esc(a.consultor_nome) : ""}</b>
           <small>${esc(a.nome)}${a.periodo ? " · " + esc(a.periodo) : ""}${a.no_periodo === false ? " · antes da data de corte, fora da conta" : ""}</small></span>
         <span class="h">${a.minutos_agenda ? horas(a.minutos_agenda) : "—"}</span>

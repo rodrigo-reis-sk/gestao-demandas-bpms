@@ -90,8 +90,9 @@ validar o piloto (checklist em `docs/08-implantacao.md` §9). Decisões D18, D20
 Depois do no-ar: identidade visual "Grafite + lima" com tema claro/escuro/automático (D26 — toda tela nova usa
 `assets/estilo.css` + `assets/tema.js`, ver `web/README.md`); migração 0003 com regras de listas, tela Listas por
 pasta, gerente FC/ED e correção da tarefa-estrutura "1-Atendimento da Base" (D27–D29).
-Fase 2 replanejada (D30–D46): migrações 0004–0007 + tela única Demandas (listas, demandas e agendas) prontas;
-faltam reiniciar a sincronização (script em `supabase/manutencao/`), validar, kanban e painel de horas.
+Fase 2 replanejada (D30–D51): migrações 0004–0007 no ar, sincronização reiniciada e carga completa (23/10/2026).
+Validação contra o ClickUp gerou a migração 0008 (D49 mês dentro de demanda, D50 recálculo por lista, D51 agendas
+atrasadas) — pronta e testada, falta `db push`. Depois: kanban e painel de horas.
 
 ## Como mexer em algo de uma fase já entregue
 

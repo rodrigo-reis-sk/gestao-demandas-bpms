@@ -176,4 +176,6 @@ Rodados em Postgres 16 local, com `auth.uid()` e os papéis do Supabase simulado
 - `clientes_faps.carregada_em`: lista já carregada desde a data de corte (`configuracoes.sincronizacao.carga_desde`).
 - Views: **`vw_demandas`** (demanda + cliente/lista/gerente + realizadas/agendadas/planejadas),
   **`vw_agendas`** (folhas, com consultor e se está incluída), **`vw_horas_mes`** (mês × consultor × cliente).
+  Nas views, agenda "agendada" com data anterior a hoje aparece como **`atrasada`** (D51) e soma em `minutos_atrasados`.
+  Estrutura dentro de demanda real é transparente para a hierarquia (D49).
 - `minutos_do_periodo` desconta o almoço (12h-14h) quando o período cobre o almoço inteiro.
