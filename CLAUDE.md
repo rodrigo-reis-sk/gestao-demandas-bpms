@@ -92,7 +92,8 @@ Depois do no-ar: identidade visual "Grafite + lima" com tema claro/escuro/autom�
 pasta, gerente FC/ED e correção da tarefa-estrutura "1-Atendimento da Base" (D27–D29).
 Fase 2 replanejada (D30–D51): migrações 0004–0007 no ar, sincronização reiniciada e carga completa (23/10/2026).
 Validação contra o ClickUp gerou a migração 0008 (D49 mês dentro de demanda, D50 recálculo por lista, D51 agendas
-atrasadas) — pronta e testada, falta `db push`. Depois: kanban e painel de horas.
+atrasadas) — no ar e conferida. Kanban (`kanban.html`, D52) e painel de horas (`horas.html`, D53) feitos;
+falta o Rodrigo conferir com dados reais. Restam na fase 2: horas manuais (R4.2) e repositório só para exceções.
 
 ## Como mexer em algo de uma fase já entregue
 

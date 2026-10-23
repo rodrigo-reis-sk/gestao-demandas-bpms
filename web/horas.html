@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Horas · Gestão BP-MS</title>
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700&display=swap">
+  <link rel="stylesheet" href="assets/estilo.css">
+  <script src="assets/tema.js"></script>
+  <script src="config.js"></script>
+  <style>
+    /* Painel de horas (D53): consultor × mês, desde a data de corte. Fonte: vw_horas_mes. */
+    .barra { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+    .barra .resumo { color: var(--suave); font-size: .86rem; margin-left: auto; }
+    .legenda { display: flex; gap: 14px; flex-wrap: wrap; color: var(--suave); font-size: .8rem; margin-bottom: 10px; }
+    .legenda i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+    .i-real { background: var(--acento); } .i-agend { background: color-mix(in srgb, var(--suave) 55%, transparent); } .i-atras { background: var(--alerta); }
+    table.horas { font-size: .86rem; }
+    table.horas th, table.horas td { white-space: nowrap; }
+    table.horas td.cel { text-align: right; font-variant-numeric: tabular-nums; min-width: 86px; }
+    td.cel .r { font-weight: 600; }
+    td.cel small { display: block; color: var(--suave); font-size: .74rem; line-height: 1.3; }
+    td.cel small .a { color: var(--alerta); font-weight: 600; }
+    td.cel.vazio { color: var(--borda); }
+    tr.consultor td:first-child { font-weight: 600; cursor: pointer; }
+    tr.consultor td:first-child .seta { color: var(--suave); display: inline-block; width: 14px; transition: transform .15s; }
+    tr.consultor.aberto td:first-child .seta { transform: rotate(90deg); }
+    tr.cliente td:first-child { padding-left: 28px; color: var(--suave); }
+    tr.total td { font-weight: 700; border-top: 2px solid var(--borda); }
+    td.tot, th.tot { background: var(--cartao-2); }
+    @media (max-width: 640px) { .barra .resumo { margin-left: 0; width: 100%; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Horas</h1>
+  <p class="sub">Horas das agendas por consultor e mês, desde o corte (01/01/2026), só das demandas e agendas consideradas.
+    Horas da agenda = estimativa do ClickUp, senão o Período sem o almoço. Clique no consultor para ver por cliente.</p>
+
+  <div class="barra">
+    <select id="cliente" aria-label="Cliente"><option value="">Todos os clientes</option></select>
+    <select id="gerente" aria-label="Gerente"><option value="">Todos os gerentes</option></select>
+    <select id="ordem" aria-label="Ordenar">
+      <option value="nome">Ordenar: consultor (A → Z)</option>
+      <option value="real">Ordenar: mais horas realizadas</option>
+      <option value="atras">Ordenar: mais horas atrasadas</option>
+    </select>
+    <span class="resumo" id="resumo">Carregando…</span>
+  </div>
+  <div class="legenda">
+    <span><i class="i-real"></i><b>Realizadas</b> (concluídas no ClickUp)</span>
+    <span><i class="i-agend"></i>Agendadas (hoje em diante)</span>
+    <span><i class="i-atras"></i>Atrasadas (data passada sem baixa)</span>
+  </div>
+
+  <div class="cartao tabela-rolagem" style="padding:0"><table class="horas" id="tabela"></table></div>
+</main>
+<script type="module">
+  import { sb, esc, $, exigirLogin, montarMenu, atualizarContadores, aviso, buscarTudo, horas } from "./assets/comum.js";
+
+  const { usuario } = await exigirLogin();
+  await montarMenu(usuario);
+
+  const texto = (a, b) => String(a ?? "").localeCompare(String(b ?? ""), "pt-BR", { numeric: true, sensitivity: "base" });
+  const NOMES_MES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+  const rotuloMes = (m) => `${NOMES_MES[Number(m.slice(5, 7)) - 1]}/${m.slice(2, 4)}`;
+  const SEM = "(sem responsável)";
+
+  let linhas = [];
+  const gerentePorCliente = new Map();     // cliente_id → siglas dos gerentes das listas do cliente
+  const abertos = new Set();
+
+  const CHAVE = "gestao-bpms-horas-v1";
+  try {
+    const f = JSON.parse(localStorage.getItem(CHAVE)) || {};
+    if (f.ordem) $("#ordem").value = f.ordem;
+  } catch { /* ignora */ }
+
+  async function carregar() {
+    let faps;
+    try {
+      [linhas, faps] = await Promise.all([
+        buscarTudo(() => sb.from("vw_horas_mes").select("*").order("mes")),
+        buscarTudo(() => sb.from("clientes_faps").select("cliente_id,sigla_gerente").order("id")),
+      ]);
+    } catch (e) { return aviso(e.message, "erro"); }
+    for (const f of faps) {
+      if (!f.cliente_id || !f.sigla_gerente) continue;
+      if (!gerentePorCliente.has(f.cliente_id)) gerentePorCliente.set(f.cliente_id, new Set());
+      gerentePorCliente.get(f.cliente_id).add(f.sigla_gerente);
+    }
+    $("#cliente").innerHTML = `<option value="">Todos os clientes</option>` +
+      [...new Set(linhas.map((l) => l.cliente_nome).filter(Boolean))].sort(texto).map((c) => `<option>${esc(c)}</option>`).join("");
+    $("#gerente").innerHTML = `<option value="">Todos os gerentes</option>` +
+      [...new Set(faps.map((f) => f.sigla_gerente).filter(Boolean))].sort().map((s) => `<option>${esc(s)}</option>`).join("");
+    desenhar();
+    atualizarContadores();
+  }
+
+  const zero = () => ({ r: 0, g: 0, a: 0 });
+  const somar = (t, l) => { t.r += l.minutos_realizados ?? 0; t.g += l.minutos_agendados ?? 0; t.a += l.minutos_atrasados ?? 0; return t; };
+
+  function celula(t, classe = "") {
+    if (!t || !(t.r || t.g || t.a)) return `<td class="cel vazio ${classe}">—</td>`;
+    const det = [t.g ? `${horas(t.g)} agend.` : "", t.a ? `<span class="a">${horas(t.a)} atras.</span>` : ""].filter(Boolean).join(" · ");
+    return `<td class="cel ${classe}"><span class="r">${horas(t.r)}</span>${det ? `<small>${det}</small>` : ""}</td>`;
+  }
+
+  function desenhar() {
+    const cli = $("#cliente").value, ger = $("#gerente").value;
+    const ls = linhas.filter((l) => (!cli || l.cliente_nome === cli) && (!ger || gerentePorCliente.get(l.cliente_id)?.has(ger)));
+    const meses = [...new Set(ls.map((l) => l.mes))].sort();
+
+    // consultor → { total, porMes, clientes: cliente → { total, porMes } }
+    const cons = new Map();
+    const totalMes = new Map(), totalGeral = zero();
+    for (const l of ls) {
+      const nc = l.consultor_nome ?? SEM, ncli = l.cliente_nome ?? "(sem cliente)";
+      if (!cons.has(nc)) cons.set(nc, { nome: nc, total: zero(), porMes: new Map(), clientes: new Map() });
+      const c = cons.get(nc);
+      if (!c.clientes.has(ncli)) c.clientes.set(ncli, { nome: ncli, total: zero(), porMes: new Map() });
+      const k = c.clientes.get(ncli);
+      for (const alvo of [c, k]) {
+        somar(alvo.total, l);
+        if (!alvo.porMes.has(l.mes)) alvo.porMes.set(l.mes, zero());
+        somar(alvo.porMes.get(l.mes), l);
+      }
+      if (!totalMes.has(l.mes)) totalMes.set(l.mes, zero());
+      somar(totalMes.get(l.mes), l);
+      somar(totalGeral, l);
+    }
+    const ordem = $("#ordem").value;
+    const cmp = ordem === "real" ? (a, b) => b.total.r - a.total.r
+      : ordem === "atras" ? (a, b) => b.total.a - a.total.a
+      : (a, b) => (a.nome === SEM) - (b.nome === SEM) || texto(a.nome, b.nome);
+    const lista = [...cons.values()].sort(cmp);
+
+    const cab = `<thead><tr><th>Consultor</th>${meses.map((m) => `<th style="text-align:right">${rotuloMes(m)}</th>`).join("")}<th class="tot" style="text-align:right">Total</th></tr></thead>`;
+    const corpo = lista.map((c) => {
+      const aberto = abertos.has(c.nome);
+      let html = `<tr class="consultor ${aberto ? "aberto" : ""}" data-consultor="${esc(c.nome)}">
+        <td><span class="seta">▸</span>${esc(c.nome)}</td>${meses.map((m) => celula(c.porMes.get(m))).join("")}${celula(c.total, "tot")}</tr>`;
+      if (aberto) {
+        html += [...c.clientes.values()].sort((a, b) => b.total.r - a.total.r || texto(a.nome, b.nome)).map((k) =>
+          `<tr class="cliente"><td>${esc(k.nome)}</td>${meses.map((m) => celula(k.porMes.get(m))).join("")}${celula(k.total, "tot")}</tr>`).join("");
+      }
+      return html;
+    }).join("");
+    const rodape = `<tr class="total"><td>Total</td>${meses.map((m) => celula(totalMes.get(m))).join("")}${celula(totalGeral, "tot")}</tr>`;
+    $("#tabela").innerHTML = ls.length ? cab + `<tbody>${corpo}${rodape}</tbody>` : `<tbody><tr><td class="suave">Sem horas para esse filtro.</td></tr></tbody>`;
+    $("#resumo").textContent = `${lista.length} consultores · ${horas(totalGeral.r)} realizadas · ${horas(totalGeral.g)} agendadas · ${horas(totalGeral.a)} atrasadas`;
+  }
+
+  for (const id of ["cliente", "gerente", "ordem"]) $("#" + id).onchange = () => {
+    try { localStorage.setItem(CHAVE, JSON.stringify({ ordem: $("#ordem").value })); } catch { /* ignora */ }
+    desenhar();
+  };
+  $("#tabela").onclick = (e) => {
+    const tr = e.target.closest("tr.consultor");
+    if (!tr) return;
+    const n = tr.dataset.consultor;
+    abertos.has(n) ? abertos.delete(n) : abertos.add(n);
+    desenhar();
+  };
+  await carregar();
+</script>
+</body>
+</html>

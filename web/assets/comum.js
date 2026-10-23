@@ -80,6 +80,8 @@ export async function sair() {
 const PAGINAS = [
   ["index.html", "Início"],
   ["demandas.html", "Demandas"],
+  ["kanban.html", "Kanban"],
+  ["horas.html", "Horas"],
   ["consultores.html", "Consultores"],
   ["sincronizacoes.html", "Log"],
   ["perfil.html", "Meu perfil"],

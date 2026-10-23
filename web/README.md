@@ -9,6 +9,8 @@ Configuração pública em `config.js` (URL do Supabase, chave anon e Client ID 
 | `login.html` | 1 | aberto | Entrar com e-mail e senha (D20) |
 | `index.html` | 1 | Gestor | Início: contadores, última sincronização, contas conectadas. Vira o kanban na fase 2 |
 | `demandas.html` | 2 | Gestor | **Tela única** (D44): Cliente → Lista (sincronizar no ClickUp) → Demanda (conta/não) → Agendas, horas realizadas × agendadas × planejadas |
+| `kanban.html` | 2 | Gestor | Kanban espelhando o status do ClickUp (D52): filtros consultor/cliente/gerente, horas e próxima agenda no card |
+| `horas.html` | 2 | Gestor | Painel de horas consultor × mês (D53), abre por cliente; realizadas, agendadas e atrasadas |
 | `listas.html` | 1 | — | Só redireciona para Demandas (D44). Antes:  Listas descobertas: a analisar no topo, sincronizar / não sincronizar (uma a uma ou em lote), cliente da lista |
 | `consultores.html` | 1 | Gestor | Consultores: sincronizar, ativo, papel; mostra se já está ligado ao ClickUp |
 | `sincronizacoes.html` | 1 | Gestor | Log das varreduras e do webhook; sincronizar agora; carga completa de 90 dias |

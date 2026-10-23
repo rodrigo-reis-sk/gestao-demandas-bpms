@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kanban · Gestão BP-MS</title>
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700&display=swap">
+  <link rel="stylesheet" href="assets/estilo.css">
+  <script src="assets/tema.js"></script>
+  <script src="config.js"></script>
+  <style>
+    /* Kanban (D36, D52): colunas = status do ClickUp; o sistema não move cards. */
+    main { max-width: none; }
+    .barra { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+    .barra input[type=text] { width: 230px; }
+    .barra label { margin: 0; display: flex; gap: 6px; align-items: center; }
+    .barra .resumo { color: var(--suave); font-size: .86rem; margin-left: auto; }
+    .quadro { display: flex; gap: 12px; overflow-x: auto; align-items: flex-start; padding-bottom: 12px; }
+    .coluna { flex: 0 0 290px; background: var(--cartao-2); border: 1px solid var(--borda); border-radius: calc(var(--raio) + 2px);
+      display: flex; flex-direction: column; max-height: calc(100vh - 210px); }
+    .coluna > header { padding: 10px 12px; border-bottom: 1px solid var(--borda); display: flex; align-items: baseline; gap: 8px; }
+    .coluna > header h2 { margin: 0; font-size: .92rem; text-transform: uppercase; letter-spacing: .04em; }
+    .coluna > header .qtd { color: var(--suave); font-size: .82rem; }
+    .coluna > header .h { margin-left: auto; color: var(--suave); font-size: .78rem; }
+    .coluna .cards { padding: 10px; display: grid; gap: 8px; overflow-y: auto; }
+    .coluna .mais { background: none; border: 0; color: var(--acento-forte); font-size: .82rem; padding: 4px 10px 10px; text-align: left; cursor: pointer; }
+    .card { background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: 9px 11px; font-size: .86rem; }
+    .card.tem-atraso { border-left: 3px solid var(--alerta); }
+    .card .nome { font-weight: 600; line-height: 1.3; }
+    .card .nome a { color: var(--suave); text-decoration: none; font-size: .78rem; margin-left: 3px; }
+    .card .meta { color: var(--suave); font-size: .78rem; margin-top: 3px; }
+    .card .barra-horas { display: flex; height: 5px; border-radius: 3px; overflow: hidden; background: var(--borda); margin: 7px 0 3px; }
+    .barra-horas .real { background: var(--acento); }
+    .barra-horas .atras { background: var(--alerta); }
+    .barra-horas .agend { background: color-mix(in srgb, var(--suave) 55%, transparent); }
+    .card .horas { color: var(--suave); font-size: .76rem; }
+    .card .horas b { color: var(--texto); font-weight: 600; }
+    .card .horas .atras b { color: var(--alerta); }
+    .card .prox { margin-top: 5px; font-size: .78rem; }
+    .card .prox.atras { color: var(--alerta); font-weight: 600; }
+    @media (max-width: 640px) { .coluna { flex-basis: 82vw; } .barra .resumo { margin-left: 0; width: 100%; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Kanban</h1>
+  <p class="sub">Espelha o status das demandas no ClickUp (para mudar um card de coluna, mude o status lá).
+    Só aparecem as demandas consideradas no gerenciamento. Borda laranja = tem agenda atrasada (data passada sem baixa).</p>
+
+  <div class="barra">
+    <input type="text" id="busca" placeholder="Buscar demanda ou cliente">
+    <select id="consultor" aria-label="Consultor"><option value="">Todos os consultores</option></select>
+    <select id="cliente" aria-label="Cliente"><option value="">Todos os clientes</option></select>
+    <select id="gerente" aria-label="Gerente"><option value="">Todos os gerentes</option></select>
+    <label><input type="checkbox" id="fechadas"> canceladas e não executadas</label>
+    <label><input type="checkbox" id="todasConcluidas"> todas as concluídas</label>
+    <span class="resumo" id="resumo">Carregando…</span>
+  </div>
+
+  <div class="quadro" id="quadro"></div>
+</main>
+<script type="module">
+  import { sb, esc, $, exigirLogin, montarMenu, atualizarContadores, aviso, buscarTudo, horas } from "./assets/comum.js";
+
+  const { usuario } = await exigirLogin();
+  await montarMenu(usuario);
+
+  // Ordem das colunas (status do ClickUp, normalizados). Status desconhecido vira coluna própria antes de "Concluído".
+  const COLUNAS = [
+    ["backlog base", "Backlog base"],
+    ["nao iniciado", "Não iniciado"],
+    ["em andamento", "Em andamento"],
+    ["em validacao", "Em validação"],
+    ["suspenso", "Suspenso"],
+    ["concluido", "Concluído"],
+  ];
+  const FECHADAS = [["cancelado", "Cancelado"], ["nao executado", "Não executado"]];
+  const LIMITE = 40;                       // cards por coluna antes do "mostrar mais"
+
+  const norm = (s) => (s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+  const chaveStatus = (d) => {
+    const n = norm(d.status);
+    return n === "complete" || n.startsWith("conclu") ? "concluido" : n;
+  };
+  const texto = (a, b) => String(a ?? "").localeCompare(String(b ?? ""), "pt-BR", { numeric: true, sensitivity: "base" });
+  const dataCurta = (v) => v ? new Date(v).toLocaleDateString("pt-BR", { timeZone: "America/Campo_Grande", day: "2-digit", month: "2-digit" }) : "";
+  const mesAtual = new Date().toLocaleDateString("en-CA", { timeZone: "America/Campo_Grande" }).slice(0, 7);
+  const mesDe = (v) => v ? new Date(v).toLocaleDateString("en-CA", { timeZone: "America/Campo_Grande" }).slice(0, 7) : "";
+
+  let demandas = [];
+  const agendasPor = new Map();            // demanda_id → agendas consideradas
+  const abertas = new Set();               // colunas com "mostrar mais"
+
+  // filtros lembrados neste navegador
+  const CHAVE = "gestao-bpms-kanban-v1";
+  const IDS = ["consultor", "cliente", "gerente", "fechadas", "todasConcluidas"];
+  let lembrados = {};
+  try { lembrados = JSON.parse(localStorage.getItem(CHAVE)) || {}; } catch { /* ignora */ }
+  const guardar = () => {
+    const f = {};
+    for (const id of IDS) f[id] = $("#" + id).type === "checkbox" ? $("#" + id).checked : $("#" + id).value;
+    try { localStorage.setItem(CHAVE, JSON.stringify(f)); } catch { /* ignora */ }
+  };
+
+  async function carregar() {
+    let ags;
+    try {
+      [demandas, ags] = await Promise.all([
+        buscarTudo(() => sb.from("vw_demandas").select("*").eq("selecao", "sincronizar").order("id")),
+        buscarTudo(() => sb.from("vw_agendas").select("demanda_id,situacao_agenda,data_agenda,consultor_nome,minutos_agenda")
+          .eq("incluida", true).order("id")),
+      ]);
+    } catch (e) { return aviso(e.message, "erro"); }
+    for (const a of ags) {
+      if (!agendasPor.has(a.demanda_id)) agendasPor.set(a.demanda_id, []);
+      agendasPor.get(a.demanda_id).push(a);
+    }
+    // próxima agenda (hoje em diante, ainda não feita) e consultores de cada demanda
+    for (const d of demandas) {
+      const lista = agendasPor.get(d.id) ?? [];
+      d._prox = lista.filter((a) => a.situacao_agenda === "agendada" && a.data_agenda)
+        .sort((a, b) => texto(a.data_agenda, b.data_agenda))[0];
+      d._consultores = new Set([d.responsavel_nome, ...lista.map((a) => a.consultor_nome)].filter(Boolean));
+    }
+    const opcoes = (id, valores, rotulo) => {
+      $("#" + id).innerHTML = `<option value="">${rotulo}</option>` +
+        [...new Set(valores)].filter(Boolean).sort(texto).map((v) => `<option>${esc(v)}</option>`).join("");
+    };
+    opcoes("consultor", demandas.flatMap((d) => [...d._consultores]), "Todos os consultores");
+    opcoes("cliente", demandas.map((d) => d.cliente_nome), "Todos os clientes");
+    opcoes("gerente", demandas.map((d) => d.sigla_gerente), "Todos os gerentes");
+    for (const id of IDS) if (lembrados[id] !== undefined) {
+      if ($("#" + id).type === "checkbox") $("#" + id).checked = lembrados[id]; else $("#" + id).value = lembrados[id];
+    }
+    desenhar();
+    atualizarContadores();
+  }
+
+  function filtradas() {
+    const busca = norm($("#busca").value), con = $("#consultor").value, cli = $("#cliente").value, ger = $("#gerente").value;
+    return demandas.filter((d) =>
+      (!busca || norm(d.nome + " " + d.cliente_nome).includes(busca)) &&
+      (!con || d._consultores.has(con)) && (!cli || d.cliente_nome === cli) && (!ger || d.sigla_gerente === ger));
+  }
+
+  function desenhar() {
+    const ds = filtradas();
+    const porStatus = new Map();
+    for (const d of ds) {
+      const k = chaveStatus(d);
+      if (!porStatus.has(k)) porStatus.set(k, { nome: d.status, itens: [] });
+      porStatus.get(k).itens.push(d);
+    }
+    const conhecidas = new Set([...COLUNAS, ...FECHADAS].map(([k]) => k));
+    const extras = [...porStatus.keys()].filter((k) => !conhecidas.has(k)).sort(texto).map((k) => [k, porStatus.get(k).nome]);
+    const colunas = [...COLUNAS.slice(0, -1), ...extras, COLUNAS.at(-1), ...($("#fechadas").checked ? FECHADAS : [])];
+
+    let visiveis = 0;
+    $("#quadro").innerHTML = colunas.map(([k, titulo]) => {
+      let itens = porStatus.get(k)?.itens ?? [];
+      let nota = "";
+      if (k === "concluido" && !$("#todasConcluidas").checked) {
+        const total = itens.length;
+        itens = itens.filter((d) => mesDe(d.fechada_na_origem ?? d.ultima_agenda) === mesAtual);
+        nota = `<div class="suave" style="font-size:.78rem;padding:0 12px 8px">Concluídas neste mês (${itens.length} de ${total})</div>`;
+      }
+      // atrasadas primeiro, depois a próxima agenda mais perto, depois a alteração mais recente
+      itens.sort((a, b) => (b.qtd_atrasadas > 0) - (a.qtd_atrasadas > 0)
+        || texto(a._prox?.data_agenda ?? "9999", b._prox?.data_agenda ?? "9999")
+        || texto(b.atualizada_na_origem, a.atualizada_na_origem));
+      visiveis += itens.length;
+      const minutos = itens.reduce((s, d) => s + d.minutos_realizados + d.minutos_agendados + d.minutos_atrasados, 0);
+      const mostrar = abertas.has(k) ? itens : itens.slice(0, LIMITE);
+      return `<section class="coluna">
+        <header><h2>${esc(titulo)}</h2><span class="qtd">${itens.length}</span><span class="h" title="realizadas + agendadas + atrasadas">${horas(minutos)}</span></header>
+        ${nota}
+        <div class="cards">${mostrar.map(card).join("") || `<div class="suave" style="font-size:.82rem">Nada aqui.</div>`}</div>
+        ${itens.length > mostrar.length ? `<button class="mais" data-mais="${esc(k)}">Mostrar mais ${itens.length - mostrar.length}</button>` : ""}
+      </section>`;
+    }).join("");
+    $("#resumo").textContent = `${visiveis} demandas no quadro · ${ds.length} filtradas`;
+  }
+
+  function card(d) {
+    const total = (d.minutos_realizados + d.minutos_agendados + d.minutos_atrasados) || 1;
+    const pct = (m) => (100 * m / total).toFixed(1);
+    const prox = d._prox
+      ? `<div class="prox">Próxima: <b>${dataCurta(d._prox.data_agenda)}</b>${d._prox.consultor_nome ? " · " + esc(d._prox.consultor_nome) : ""}</div>` : "";
+    const atraso = d.qtd_atrasadas ? `<div class="prox atras">${d.qtd_atrasadas} agenda${d.qtd_atrasadas > 1 ? "s" : ""} atrasada${d.qtd_atrasadas > 1 ? "s" : ""}</div>` : "";
+    return `<article class="card ${d.qtd_atrasadas ? "tem-atraso" : ""}">
+      <div class="nome">${esc(d.nome)}${d.url ? `<a href="${esc(d.url)}" target="_blank" rel="noopener" title="Abrir no ClickUp">↗</a>` : ""}</div>
+      <div class="meta">${esc(d.cliente_nome ?? "sem cliente")}${d.responsavel_nome ? " · " + esc(d.responsavel_nome) : ""}${d.sigla_gerente ? " · " + esc(d.sigla_gerente) : ""}</div>
+      <div class="barra-horas" title="realizadas / atrasadas / agendadas">
+        <span class="real" style="width:${pct(d.minutos_realizados)}%"></span>
+        <span class="atras" style="width:${pct(d.minutos_atrasados)}%"></span>
+        <span class="agend" style="width:${pct(d.minutos_agendados)}%"></span>
+      </div>
+      <div class="horas"><b>${horas(d.minutos_realizados)}</b> realizadas · <b>${horas(d.minutos_agendados)}</b> agendadas${d.minutos_atrasados ? ` · <span class="atras"><b>${horas(d.minutos_atrasados)}</b> atrasadas</span>` : ""}${d.minutos_planejados ? ` · ${horas(d.minutos_planejados)} plan.` : ""}</div>
+      ${atraso}${prox}
+    </article>`;
+  }
+
+  $("#busca").oninput = desenhar;
+  for (const id of IDS) $("#" + id).onchange = () => { guardar(); desenhar(); };
+  $("#quadro").onclick = (e) => {
+    const b = e.target.closest("[data-mais]");
+    if (b) { abertas.add(b.dataset.mais); desenhar(); }
+  };
+  await carregar();
+</script>
+</body>
+</html>
