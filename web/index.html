@@ -42,11 +42,10 @@
     const { count: marcados } = await sb.from("consultores").select("id", { count: "exact", head: true }).eq("sincronizar", true);
     const { count: listasMarcadas } = await sb.from("clientes_faps").select("id", { count: "exact", head: true }).eq("situacao_sincronizacao", "sincronizar");
     const cartoes = [
-      ["Listas a analisar", p.listas_a_analisar ?? 0, "listas.html"],
-      ["Listas sincronizando", listasMarcadas ?? 0, "listas.html"],
+      ["Listas a analisar", p.listas_a_analisar ?? 0, "demandas.html"],
+      ["Listas sincronizando", listasMarcadas ?? 0, "demandas.html"],
       ["Consultores sincronizando", marcados ?? 0, "consultores.html"],
       ["Tarefas no banco", tarefas ?? 0, null],
-      ["Demandas a analisar", p.demandas_a_analisar ?? 0, "demandas.html"],
       ["Conta BPMS sem pessoa", p.responsaveis_sem_pessoa ?? 0, null],
     ];
     $("#numeros").innerHTML = cartoes.map(([t, n, href]) =>

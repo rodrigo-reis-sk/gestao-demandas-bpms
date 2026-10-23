@@ -34,7 +34,7 @@ end $$;
 
 \echo '== J2 escolha do gestor fica no representante'
 set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000001';
-update tarefas set selecao = 'sincronizar' where id_externo = 'r1';
+update tarefas set selecao = 'nao_sincronizar' where id_externo = 'r1';   -- o gestor mexeu nesta
 reset request.jwt.claim.sub;
 -- chega um atendimento mais antigo com o mesmo nome: o escolhido continua sendo a demanda
 select gravar_tarefas('clickup', '[{"id_externo":"r0","nome":"Automatizar os pedidos dos benefícios","status":"complete","status_tipo":"closed",

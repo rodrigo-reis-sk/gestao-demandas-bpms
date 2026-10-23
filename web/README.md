@@ -8,8 +8,8 @@ Configuração pública em `config.js` (URL do Supabase, chave anon e Client ID 
 |---|---|---|---|
 | `login.html` | 1 | aberto | Entrar com e-mail e senha (D20) |
 | `index.html` | 1 | Gestor | Início: contadores, última sincronização, contas conectadas. Vira o kanban na fase 2 |
-| `demandas.html` | 2 | Gestor | Cliente → Lista → Demanda → Agendas, horas realizadas × agendadas × planejadas, escolha do que entra nos painéis |
-| `listas.html` | 1 | Gestor | Listas descobertas: a analisar no topo, sincronizar / não sincronizar (uma a uma ou em lote), cliente da lista |
+| `demandas.html` | 2 | Gestor | **Tela única** (D44): Cliente → Lista (sincronizar no ClickUp) → Demanda (conta/não) → Agendas, horas realizadas × agendadas × planejadas |
+| `listas.html` | 1 | — | Só redireciona para Demandas (D44). Antes:  Listas descobertas: a analisar no topo, sincronizar / não sincronizar (uma a uma ou em lote), cliente da lista |
 | `consultores.html` | 1 | Gestor | Consultores: sincronizar, ativo, papel; mostra se já está ligado ao ClickUp |
 | `sincronizacoes.html` | 1 | Gestor | Log das varreduras e do webhook; sincronizar agora; carga completa de 90 dias |
 | `perfil.html` | 1 | Gestor | Conectar a própria conta do ClickUp (OAuth ou token pessoal), escolher a conta da sincronização, registrar o webhook |

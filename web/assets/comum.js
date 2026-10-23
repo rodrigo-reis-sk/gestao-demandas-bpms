@@ -80,7 +80,6 @@ export async function sair() {
 const PAGINAS = [
   ["index.html", "Início"],
   ["demandas.html", "Demandas"],
-  ["listas.html", "Listas"],
   ["consultores.html", "Consultores"],
   ["sincronizacoes.html", "Log"],
   ["perfil.html", "Meu perfil"],
@@ -115,8 +114,7 @@ export async function atualizarContadores() {
     link.querySelector(".contador")?.remove();
     if (qtd) link.insertAdjacentHTML("beforeend", `<span class="contador" title="${titulo}">${qtd > 999 ? "999+" : qtd}</span>`);
   };
-  contador("listas.html", data?.listas_a_analisar, "Listas a analisar");
-  contador("demandas.html", data?.demandas_a_analisar, "Demandas a analisar");
+  contador("demandas.html", data?.listas_a_analisar, "Listas do ClickUp a analisar");
   return data;
 }
 

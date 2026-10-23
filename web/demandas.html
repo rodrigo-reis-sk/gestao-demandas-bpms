@@ -12,34 +12,39 @@
   <script src="assets/tema.js"></script>
   <script src="config.js"></script>
   <style>
-    /* Só desta tela: árvore Cliente → Lista → Demanda → Agendas */
+    /* Tela única: Cliente → Lista (o que buscar no ClickUp) → Demanda (o que conta) → Agendas */
     .barra { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
     .barra input[type=text] { width: 240px; }
     .barra .resumo { color: var(--suave); font-size: .86rem; margin-left: auto; }
+    .sugestoes { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px; margin-bottom: 14px;
+      border: 1px solid var(--borda); border-left: 4px solid var(--acento); border-radius: var(--raio); background: var(--destaque); }
     details.cliente { margin-bottom: 12px; padding: 0; overflow: hidden; }
-    details.cliente > summary, details.lista > summary { list-style: none; cursor: pointer; }
-    details.cliente > summary::-webkit-details-marker, details.lista > summary::-webkit-details-marker { display: none; }
+    details > summary { list-style: none; cursor: pointer; }
+    details > summary::-webkit-details-marker { display: none; }
     .cab { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 11px 14px; }
-    .cab h2 { margin: 0; font-size: 1rem; color: var(--texto); }
+    .cab h2 { margin: 0; font-size: 1rem; }
+    .cab h3 { margin: 0; font-size: .93rem; font-weight: 600; }
     .cab .tot { color: var(--suave); font-size: .82rem; }
-    .cab .seta-abrir { margin-left: auto; color: var(--suave); transition: transform .15s; }
+    .cab .dir { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+    .seta-abrir { color: var(--suave); transition: transform .15s; }
     details[open] > summary .seta-abrir { transform: rotate(180deg); }
     details.cliente > summary { background: var(--cartao-2); border-bottom: 1px solid var(--borda); }
-    details.lista { border-top: 1px solid var(--borda); }
-    details.lista:first-of-type { border-top: 0; }
-    details.lista > summary .cab { padding-left: 22px; }
-    details.lista > summary h3 { margin: 0; font-size: .93rem; font-weight: 600; }
-    .lista-acoes { display: flex; gap: 6px; padding: 0 14px 8px 22px; flex-wrap: wrap; }
-    .demandas { padding: 4px 14px 14px 22px; display: grid; gap: 10px; }
+    .lista { border-top: 1px solid var(--borda); }
+    .lista:first-of-type { border-top: 0; }
+    .lista > summary .cab { padding-left: 22px; }
+    .lista.nao_sincronizar > summary h3, .lista.a_analisar > summary h3 { color: var(--suave); }
+    .lista-corpo { padding: 2px 14px 14px 22px; }
+    .lista-acoes { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+    .aviso-lista { color: var(--suave); font-size: .86rem; padding: 4px 0 8px; }
+    .demandas { display: grid; gap: 10px; }
     .demanda { border: 1px solid var(--borda); border-radius: calc(var(--raio) + 2px); background: var(--cartao); padding: 12px 14px; }
-    .demanda.a_analisar { border-left: 4px solid var(--alerta); }
-    .demanda.nao_sincronizar { opacity: .6; }
+    .demanda.nao_sincronizar { opacity: .55; }
     .d-topo { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
     .d-nome { font-weight: 600; font-size: .98rem; }
     .d-nome a { color: var(--suave); text-decoration: none; font-size: .8rem; margin-left: 4px; }
     .d-selos { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; align-items: center; }
     .d-meta { color: var(--suave); font-size: .82rem; margin-top: 4px; }
-    .d-direita { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+    .d-direita { margin-left: auto; }
     .barra-horas { display: flex; height: 7px; border-radius: 4px; overflow: hidden; background: var(--borda); margin: 10px 0 4px; }
     .barra-horas .real { background: var(--acento); }
     .barra-horas .agend { background: color-mix(in srgb, var(--suave) 55%, transparent); }
@@ -59,38 +64,46 @@
     .agenda .h { font-weight: 600; font-variant-numeric: tabular-nums; }
     .agenda.fora { opacity: .5; }
     .agenda.fora .h { text-decoration: line-through; }
-    .segmento { display: inline-flex; border: 1px solid var(--borda); border-radius: var(--raio); overflow: hidden; }
+    .segmento { display: inline-flex; border: 1px solid var(--borda); border-radius: var(--raio); overflow: hidden; vertical-align: middle; }
     .segmento button { border: 0; border-radius: 0; padding: 3px 11px; font-size: .82rem; background: var(--cartao); color: var(--suave); }
     .segmento button + button { border-left: 1px solid var(--borda); }
     .segmento button.sim[aria-pressed="true"] { background: var(--acento); color: var(--acento-texto); font-weight: 600; }
     .segmento button.nao[aria-pressed="true"] { background: var(--texto); color: var(--fundo); font-weight: 600; }
     .link-agendas { background: none; border: 0; padding: 0; color: var(--acento-forte); font-size: .82rem; cursor: pointer; }
-    @media (max-width: 640px) { .d-direita { margin-left: 0; width: 100%; } .barra .resumo { margin-left: 0; width: 100%; } }
+    .selo.sugerida { color: var(--acento-forte); border-color: currentColor; }
+    @media (max-width: 640px) { .d-direita, .cab .dir { margin-left: 0; } .barra .resumo { margin-left: 0; width: 100%; } }
   </style>
 </head>
 <body>
 <main>
   <h1>Demandas</h1>
-  <p class="sub">Cada tarefa do ClickUp é uma <b>demanda</b>; as subtarefas são as <b>agendas</b>. Escolha quais demandas entram
-    nos painéis (<b>Sincronizar</b>) e, se precisar, tire agendas específicas da conta.</p>
+  <p class="sub">Marque as <b>listas</b> do ClickUp que entram na sincronização; tudo o que vier delas já conta nos painéis.
+    Desmarque só as <b>demandas</b> ou <b>agendas</b> que não devem contar. Tarefa = demanda · subtarefa = agenda.</p>
+
+  <div id="sugestoes"></div>
 
   <div class="barra">
-    <input type="text" id="busca" placeholder="Buscar demanda, cliente ou FAP">
-    <select id="selecao" aria-label="Escolha">
-      <option value="a_analisar">A analisar</option>
-      <option value="sincronizar">Sincronizando</option>
-      <option value="nao_sincronizar">Não sincronizar</option>
-      <option value="">Todas</option>
+    <input type="text" id="busca" placeholder="Buscar cliente, lista, FAP ou demanda">
+    <select id="filtroLista" aria-label="Listas">
+      <option value="sincronizar">Listas sincronizando</option>
+      <option value="a_analisar">Listas a analisar</option>
+      <option value="nao_sincronizar">Listas não sincronizar</option>
+      <option value="">Todas as listas</option>
     </select>
-    <select id="status" aria-label="Status"><option value="">Todos os status</option></select>
+    <select id="filtroDemanda" aria-label="Demandas">
+      <option value="">Todas as demandas</option>
+      <option value="sincronizar">Só as que contam</option>
+      <option value="nao_sincronizar">Só as desmarcadas</option>
+    </select>
     <select id="gerente" aria-label="Gerente"><option value="">Todos os gerentes</option></select>
     <select id="ordem" aria-label="Ordenar por">
       <option value="atualizada">Ordenar: alteração mais recente</option>
       <option value="nome">Ordenar: nome (A → Z)</option>
       <option value="realizadas">Ordenar: mais horas realizadas</option>
       <option value="agendadas">Ordenar: mais horas agendadas</option>
-      <option value="agenda">Ordenar: próxima/última agenda</option>
+      <option value="agenda">Ordenar: data da última agenda</option>
     </select>
+    <label style="margin:0;display:flex;gap:6px;align-items:center"><input type="checkbox" id="encerradas"> listas encerradas</label>
     <span class="resumo" id="resumo">Carregando…</span>
   </div>
 
@@ -102,110 +115,145 @@
   const { usuario } = await exigirLogin();
   await montarMenu(usuario);
 
-  let demandas = [];
-  const abertos = new Set();          // grupos abertos (cliente/lista), para manter ao redesenhar
-  const agendasAbertas = new Set();   // demandas com as agendas abertas
-  const cacheAgendas = new Map();
+  let listas = [], demandas = [];
+  const abertos = new Set(), agendasAbertas = new Set(), cacheAgendas = new Map();
+  const TIPOS = { avulso: "Avulso", projeto: "Projeto", interno: "Interno", outro: "Outro" };
 
-  const CHAVE = "gestao-bpms-demandas-filtros";
+  // filtros lembrados neste navegador
+  const CHAVE = "gestao-bpms-demandas-v2";
   try {
     const f = JSON.parse(localStorage.getItem(CHAVE)) || {};
-    for (const id of ["selecao", "ordem"]) if (f[id] !== undefined) $("#" + id).value = f[id];
+    for (const id of ["filtroLista", "filtroDemanda", "ordem"]) if (f[id] !== undefined) $("#" + id).value = f[id];
   } catch { /* ignora */ }
   const guardar = () => {
-    try { localStorage.setItem(CHAVE, JSON.stringify({ selecao: $("#selecao").value, ordem: $("#ordem").value })); } catch { /* ignora */ }
+    try { localStorage.setItem(CHAVE, JSON.stringify({ filtroLista: $("#filtroLista").value, filtroDemanda: $("#filtroDemanda").value, ordem: $("#ordem").value })); }
+    catch { /* ignora */ }
   };
 
   const texto = (a, b) => String(a ?? "").localeCompare(String(b ?? ""), "pt-BR", { numeric: true, sensitivity: "base" });
-  const nomePasta = (d) => (d.pasta_nome ?? d.cliente_nome ?? "(sem cliente)").replace(/\s-\s*[A-Z]{2,3}\s*$/, "");
-  // dd/mm; com o ano quando não for o ano corrente (ex.: 18/09/25)
+  const semSigla = (n) => (n ?? "").replace(/\s-\s*[A-Z]{2,3}\s*$/, "");
   const anoAtual = new Date().getFullYear();
   const dataCurta = (v) => {
     if (!v) return "";
-    const d = new Date(v);
-    const opc = { timeZone: "America/Campo_Grande", day: "2-digit", month: "2-digit" };
+    const d = new Date(v), opc = { timeZone: "America/Campo_Grande", day: "2-digit", month: "2-digit" };
     if (d.getFullYear() !== anoAtual) opc.year = "2-digit";
     return d.toLocaleDateString("pt-BR", opc);
   };
   const classeStatus = (s) => {
     const n = (s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-    return n.startsWith("conclu") ? "ok" : /suspen|cancel|nao exec/.test(n) ? "erro" : /valid|aguard|pend/.test(n) ? "alerta" : "";
+    return n.startsWith("conclu") || n === "complete" ? "ok" : /suspen|cancel|nao exec/.test(n) ? "erro" : /valid|aguard|pend/.test(n) ? "alerta" : "";
   };
 
   async function carregar() {
     try {
-      demandas = await buscarTudo(() => sb.from("vw_demandas").select("*").order("id"));
+      [listas, demandas] = await Promise.all([
+        buscarTudo(() => sb.from("clientes_faps").select("*").order("id")),
+        buscarTudo(() => sb.from("vw_demandas").select("*").order("id")),
+      ]);
     } catch (e) { return aviso(e.message, "erro"); }
-    const status = [...new Set(demandas.map((d) => d.status).filter(Boolean))].sort(texto);
-    $("#status").innerHTML = `<option value="">Todos os status</option>` + status.map((s) => `<option>${esc(s)}</option>`).join("");
-    const siglas = [...new Set(demandas.map((d) => d.sigla_gerente).filter(Boolean))].sort();
+    const siglas = [...new Set(listas.map((f) => f.sigla_gerente).filter(Boolean))].sort();
     $("#gerente").innerHTML = `<option value="">Todos os gerentes</option>` + siglas.map((s) => `<option>${esc(s)}</option>`).join("");
     desenhar();
+    atualizarContadores();
   }
 
-  function visiveis() {
+  // ---------------------------------------------------------------- montagem da árvore
+  function arvore() {
     const busca = $("#busca").value.trim().toLowerCase();
-    const sel = $("#selecao").value, st = $("#status").value, ger = $("#gerente").value;
-    return demandas.filter((d) =>
-      (!sel || d.selecao === sel) && (!st || d.status === st) && (!ger || d.sigla_gerente === ger) &&
-      (!busca || [d.nome, d.cliente_nome, d.pasta_nome, d.nome_lista, d.fap].join(" ").toLowerCase().includes(busca)));
+    const fl = $("#filtroLista").value, fd = $("#filtroDemanda").value, ger = $("#gerente").value;
+    const encerradas = $("#encerradas").checked;
+    const porLista = new Map();
+    for (const d of demandas) {
+      const k = d.fap_id ?? "-";
+      if (!porLista.has(k)) porLista.set(k, []);
+      porLista.get(k).push(d);
+    }
+    const clientes = new Map();
+    for (const f of listas) {
+      if (!f.lista_id_externo) continue;                                   // FAP do cadastro ainda sem lista no ClickUp
+      if (fl && f.situacao_sincronizacao !== fl) continue;
+      if (!encerradas && !f.ativa && f.situacao_sincronizacao !== "sincronizar") continue;
+      if (ger && f.sigla_gerente !== ger) continue;
+      let ds = porLista.get(f.id) ?? [];
+      if (fd) ds = ds.filter((d) => d.selecao === fd);
+      const casaLista = !busca || [f.pasta_nome, f.nome_lista, f.fap].join(" ").toLowerCase().includes(busca);
+      if (busca && !casaLista) {
+        ds = ds.filter((d) => d.nome.toLowerCase().includes(busca));
+        if (!ds.length) continue;
+      }
+      if (fd && f.situacao_sincronizacao === "sincronizar" && !ds.length) continue;
+      const kc = f.pasta_id_externo ?? f.pasta_nome ?? "-";
+      if (!clientes.has(kc)) clientes.set(kc, { nome: semSigla(f.pasta_nome) || "(sem pasta)", sigla: f.sigla_gerente, listas: [] });
+      clientes.get(kc).listas.push({ f, ds: ordenar(ds) });
+    }
+    return [...clientes.entries()].sort(([, a], [, b]) => texto(a.nome, b.nome));
   }
 
-  function ordenar(lista) {
-    const modo = $("#ordem").value;
+  function ordenar(ds) {
     const cmp = {
       atualizada: (a, b) => texto(b.atualizada_na_origem, a.atualizada_na_origem),
       nome: (a, b) => texto(a.nome, b.nome),
       realizadas: (a, b) => b.minutos_realizados - a.minutos_realizados,
       agendadas: (a, b) => b.minutos_agendados - a.minutos_agendados,
       agenda: (a, b) => texto(b.ultima_agenda, a.ultima_agenda),
-    }[modo];
-    return [...lista].sort(cmp);
+    }[$("#ordem").value];
+    return [...ds].sort(cmp);
   }
+
+  const contaHoras = (ds, campo) => ds.filter((d) => d.selecao !== "nao_sincronizar").reduce((t, d) => t + (d[campo] ?? 0), 0);
 
   function desenhar() {
-    const lista = ordenar(visiveis());
-    const qtd = (s) => demandas.filter((d) => d.selecao === s).length;
-    $("#resumo").textContent = `${lista.length} exibida(s) · ${qtd("a_analisar")} a analisar · ${qtd("sincronizar")} sincronizando · ${qtd("nao_sincronizar")} não sincronizar`;
+    const qtd = (s) => listas.filter((f) => f.lista_id_externo && f.situacao_sincronizacao === s).length;
+    const sugeridas = listas.filter((f) => f.sugerida && f.situacao_sincronizacao === "a_analisar");
+    const carregando = listas.filter((f) => f.situacao_sincronizacao === "sincronizar" && !f.carregada_em).length;
+    $("#resumo").textContent = `${qtd("sincronizar")} lista(s) sincronizando · ${qtd("a_analisar")} a analisar · ${demandas.length} demanda(s)`
+      + (carregando ? ` · ${carregando} lista(s) aguardando carga` : "");
+    $("#sugestoes").innerHTML = sugeridas.length ? `<div class="sugestoes">
+      <span><b>${sugeridas.length}</b> lista(s) Avulso de clientes conhecidos sugeridas para sincronizar.</span>
+      <button class="primario pequeno" id="aceitar">Aceitar sugestões</button>
+      <button class="pequeno" id="ver-sugeridas">Ver listas a analisar</button></div>` : "";
+    $("#aceitar")?.addEventListener("click", () => escolherListas(sugeridas.map((f) => f.id), "sincronizar"));
+    $("#ver-sugeridas")?.addEventListener("click", () => { $("#filtroLista").value = "a_analisar"; guardar(); desenhar(); });
 
-    // cliente → lista → demandas (a ordem dos grupos segue a 1ª demanda de cada um na ordenação escolhida)
-    const clientes = new Map();
-    for (const d of lista) {
-      const kc = d.pasta_nome ?? d.cliente_nome ?? "-";
-      if (!clientes.has(kc)) clientes.set(kc, new Map());
-      const listas = clientes.get(kc);
-      const kl = d.fap_id ?? d.nome_lista ?? "-";
-      if (!listas.has(kl)) listas.set(kl, []);
-      listas.get(kl).push(d);
-    }
-    const poucos = clientes.size <= 3 || $("#busca").value.trim();
-    const soma = (ds, campo) => ds.reduce((t, d) => t + (d[campo] ?? 0), 0);
-
-    $("#arvore").innerHTML = clientes.size ? [...clientes.entries()].map(([kc, listas]) => {
-      const todas = [...listas.values()].flat();
-      const abertoC = poucos || abertos.has("c:" + kc);
-      return `<details class="cartao cliente" data-chave="c:${esc(kc)}" ${abertoC ? "open" : ""}>
-        <summary><div class="cab"><h2>${esc(nomePasta(todas[0]))}</h2>
-          ${todas[0].sigla_gerente ? `<span class="selo">${esc(todas[0].sigla_gerente)}</span>` : ""}
-          <span class="tot">${todas.length} demanda(s) · ${horas(soma(todas, "minutos_realizados"))} real. · ${horas(soma(todas, "minutos_agendados"))} agend.</span>
-          <span class="seta-abrir">▾</span></div></summary>
-        ${abertoC ? [...listas.entries()].map(([kl, ds]) => blocoLista(kl, ds, poucos)).join("") : ""}
+    const grupos = arvore();
+    const tudoAberto = grupos.length <= 3 || $("#busca").value.trim();
+    $("#arvore").innerHTML = grupos.length ? grupos.map(([kc, c]) => {
+      const todas = c.listas.flatMap((l) => l.ds);
+      const aberto = tudoAberto || abertos.has("c:" + kc);
+      return `<details class="cartao cliente" data-chave="c:${esc(kc)}" ${aberto ? "open" : ""}>
+        <summary><div class="cab"><h2>${esc(c.nome)}</h2>
+          ${c.sigla ? `<span class="selo">${esc(c.sigla)}</span>` : ""}
+          <span class="tot">${c.listas.length} lista(s) · ${todas.length} demanda(s) · ${horas(contaHoras(todas, "minutos_realizados"))} real. · ${horas(contaHoras(todas, "minutos_agendados"))} agend.</span>
+          <span class="dir"><span class="seta-abrir">▾</span></span></div></summary>
+        ${aberto ? c.listas.map((l) => blocoLista(l.f, l.ds, tudoAberto)).join("") : ""}
       </details>`;
-    }).join("") : `<div class="cartao suave">Nenhuma demanda com esses filtros. Se ainda não sincronizou depois de marcar as listas, use Log → Sincronizar agora.</div>`;
+    }).join("") : `<div class="cartao suave">Nada com esses filtros. Troque o filtro de listas para "Todas as listas".</div>`;
   }
 
-  function blocoLista(kl, ds, poucos) {
-    const aberto = poucos || abertos.has("l:" + kl);
-    const soma = (campo) => ds.reduce((t, d) => t + (d[campo] ?? 0), 0);
-    return `<details class="lista" data-chave="l:${esc(kl)}" ${aberto ? "open" : ""}>
-      <summary><div class="cab"><h3>${esc(ds[0].nome_lista ?? "(lista)")}</h3>
-        <span class="tot">${ds.length} demanda(s) · ${horas(soma("minutos_realizados"))} real. · ${horas(soma("minutos_agendados"))} agend.</span>
-        <span class="seta-abrir">▾</span></div></summary>
-      ${aberto ? `<div class="lista-acoes">
-          <button class="pequeno" data-lote="${esc(kl)}" data-sel="sincronizar">Sincronizar as ${ds.length} exibidas</button>
-          <button class="pequeno" data-lote="${esc(kl)}" data-sel="nao_sincronizar">Não sincronizar as ${ds.length} exibidas</button>
-        </div>
-        <div class="demandas">${ds.map(cartao).join("")}</div>` : ""}
+  function blocoLista(f, ds, tudoAberto) {
+    const sit = f.situacao_sincronizacao;
+    const aberto = sit === "sincronizar" && (tudoAberto || abertos.has("l:" + f.id));
+    const estado = sit === "sincronizar"
+      ? (f.carregada_em ? "" : `<span class="selo alerta" title="A carga desde 01/01/2026 roda nas próximas varreduras">aguardando carga</span>`)
+      : sit === "a_analisar" ? `<span class="selo alerta">a analisar</span>${f.sugerida ? ' <span class="selo sugerida">sugerida</span>' : ""}` : "";
+    return `<details class="lista ${sit}" data-chave="l:${f.id}" ${aberto ? "open" : ""}>
+      <summary><div class="cab"><h3>${esc(f.nome_lista ?? "(lista)")}</h3>
+        <span class="selo">${TIPOS[f.tipo] ?? f.tipo}</span>${f.ativa ? "" : ' <span class="selo">encerrada</span>'} ${estado}
+        <span class="tot">${sit === "sincronizar" ? `${ds.length} demanda(s) · ${horas(contaHoras(ds, "minutos_realizados"))} real. · ${horas(contaHoras(ds, "minutos_agendados"))} agend.` : ""}</span>
+        <span class="dir">
+          <span class="segmento" role="group" aria-label="Sincronizar a lista">
+            <button class="sim" data-lista="${f.id}" data-sel="sincronizar" aria-pressed="${sit === "sincronizar"}">Sincronizar</button>
+            <button class="nao" data-lista="${f.id}" data-sel="nao_sincronizar" aria-pressed="${sit === "nao_sincronizar"}">Não</button>
+          </span>
+          ${sit === "sincronizar" ? '<span class="seta-abrir">▾</span>' : ""}
+        </span></div></summary>
+      ${aberto ? `<div class="lista-corpo">
+        ${ds.length ? `<div class="lista-acoes">
+            <button class="pequeno" data-lote="${f.id}" data-sel="sincronizar">Contar as ${ds.length} exibidas</button>
+            <button class="pequeno" data-lote="${f.id}" data-sel="nao_sincronizar">Não contar as ${ds.length} exibidas</button></div>
+          <div class="demandas">${ds.map(cartao).join("")}</div>`
+        : `<div class="aviso-lista">${f.carregada_em ? "Nenhuma demanda com agenda a partir de 01/01/2026." : "A lista entra na próxima varredura (Log → Sincronizar agora)."}</div>`}
+      </div>` : ""}
     </details>`;
   }
 
@@ -225,8 +273,8 @@
           <div class="d-meta">${[d.responsavel_nome, datas, d.qtd_agendas ? `${d.qtd_agendas} agenda(s)` : ""].filter(Boolean).map(esc).join(" · ")}</div>
         </div>
         <div class="d-direita">
-          <span class="segmento" role="group" aria-label="Sincronizar demanda">
-            <button class="sim" data-sel="sincronizar" aria-pressed="${d.selecao === "sincronizar"}">Sincronizar</button>
+          <span class="segmento" role="group" aria-label="A demanda conta nos painéis">
+            <button class="sim" data-sel="sincronizar" aria-pressed="${d.selecao !== "nao_sincronizar"}">Conta</button>
             <button class="nao" data-sel="nao_sincronizar" aria-pressed="${d.selecao === "nao_sincronizar"}">Não</button>
           </span>
         </div>
@@ -256,39 +304,37 @@
         <span class="txt"><b>${dataCurta(a.data_agenda) || "sem data"}${a.consultor_nome ? " · " + esc(a.consultor_nome) : ""}</b>
           <small>${esc(a.nome)}${a.periodo ? " · " + esc(a.periodo) : ""}${a.no_periodo === false ? " · antes da data de corte, fora da conta" : ""}</small></span>
         <span class="h">${a.minutos_agenda ? horas(a.minutos_agenda) : "—"}</span>
-        <button class="pequeno" data-agenda="${a.id}" data-sel="${a.selecao === "nao_sincronizar" ? "sincronizar" : "nao_sincronizar"}"
-          title="${a.selecao === "nao_sincronizar" ? "Voltar a contar esta agenda" : "Não contar esta agenda nas horas"}">${a.selecao === "nao_sincronizar" ? "Contar" : "Não contar"}</button>
+        <button class="pequeno" data-agenda="${a.id}" data-sel="${a.selecao === "nao_sincronizar" ? "sincronizar" : "nao_sincronizar"}">${a.selecao === "nao_sincronizar" ? "Contar" : "Não contar"}</button>
       </div>`;
     }).join("") : `<div class="suave">Sem agendas.</div>`);
   }
 
-  async function abrirAgendas(id) {
-    if (agendasAbertas.has(id)) { agendasAbertas.delete(id); desenhar(); return; }
-    agendasAbertas.add(id);
-    desenhar();
-    const { data, error } = await sb.from("vw_agendas").select("*").eq("demanda_id", id).order("data_agenda");
+  // ---------------------------------------------------------------- ações
+  async function escolherListas(ids, situacao) {
+    if (!ids.length) return;
+    const { error } = await sb.from("clientes_faps").update({ situacao_sincronizacao: situacao }).in("id", ids);
     if (error) return aviso(error.message, "erro");
-    cacheAgendas.set(id, data ?? []);
-    const alvo = $("#det-" + id);
-    if (alvo) alvo.innerHTML = detalhe(demandas.find((d) => d.id === id));
+    for (const f of listas) if (ids.includes(f.id)) { f.situacao_sincronizacao = situacao; if (situacao !== "sincronizar") f.carregada_em = null; }
+    aviso(situacao === "sincronizar"
+      ? `${ids.length} lista(s) marcada(s). As tarefas desde 01/01/2026 chegam nas próximas varreduras (Log → Sincronizar agora).`
+      : `${ids.length} lista(s) fora da sincronização.`, "ok");
+    desenhar();
+    atualizarContadores();
   }
 
-  async function escolher(ids, selecao) {
+  async function escolherDemandas(ids, selecao) {
     if (!ids.length) return;
-    for (let i = 0; i < ids.length; i += 200) {     // em lotes (URL do filtro tem limite)
+    for (let i = 0; i < ids.length; i += 200) {
       const { error } = await sb.from("tarefas").update({ selecao }).in("id", ids.slice(i, i + 200));
       if (error) return aviso(error.message, "erro");
     }
     for (const d of demandas) if (ids.includes(d.id)) d.selecao = selecao;
-    aviso(`${ids.length} demanda(s): ${selecao === "sincronizar" ? "sincronizar" : "não sincronizar"}.`, "ok");
     desenhar();
-    atualizarContadores();
   }
 
   async function escolherAgenda(idAgenda, selecao, idDemanda) {
     const { error } = await sb.from("tarefas").update({ selecao }).eq("id", idAgenda);
     if (error) return aviso(error.message, "erro");
-    // recarrega a demanda (as somas mudam) e as agendas dela
     const [{ data: d }, { data: ags }] = await Promise.all([
       sb.from("vw_demandas").select("*").eq("id", idDemanda).maybeSingle(),
       sb.from("vw_agendas").select("*").eq("demanda_id", idDemanda).order("data_agenda"),
@@ -298,34 +344,49 @@
     desenhar();
   }
 
+  async function abrirAgendas(id) {
+    if (agendasAbertas.has(id)) { agendasAbertas.delete(id); return desenhar(); }
+    agendasAbertas.add(id);
+    desenhar();
+    const { data, error } = await sb.from("vw_agendas").select("*").eq("demanda_id", id).order("data_agenda");
+    if (error) return aviso(error.message, "erro");
+    cacheAgendas.set(id, data ?? []);
+    const alvo = $("#det-" + id);
+    if (alvo) alvo.innerHTML = detalhe(demandas.find((d) => d.id === id));
+  }
+
   $("#arvore").addEventListener("click", (ev) => {
     const alvo = ev.target;
+    const bLista = alvo.closest("button[data-lista]");
+    if (bLista) {                     // botão dentro do <summary>: não abre/fecha a lista
+      ev.preventDefault();
+      if (bLista.getAttribute("aria-pressed") !== "true") escolherListas([bLista.dataset.lista], bLista.dataset.sel);
+      return;
+    }
     const bAg = alvo.closest("button[data-agenda]");
     if (bAg) return escolherAgenda(bAg.dataset.agenda, bAg.dataset.sel, bAg.closest(".demanda").dataset.id);
     const bLote = alvo.closest("button[data-lote]");
     if (bLote) {
-      const ids = visiveis().filter((d) => String(d.fap_id ?? d.nome_lista ?? "-") === bLote.dataset.lote).map((d) => d.id);
-      return escolher(ids, bLote.dataset.sel);
+      const ids = arvore().flatMap(([, c]) => c.listas).filter((l) => l.f.id === bLote.dataset.lote).flatMap((l) => l.ds.map((d) => d.id));
+      return escolherDemandas(ids, bLote.dataset.sel);
     }
-    const bSel = alvo.closest(".segmento button[data-sel]");
-    if (bSel && bSel.getAttribute("aria-pressed") !== "true") return escolher([bSel.closest(".demanda").dataset.id], bSel.dataset.sel);
+    const bSel = alvo.closest(".demanda .segmento button[data-sel]");
+    if (bSel && bSel.getAttribute("aria-pressed") !== "true") return escolherDemandas([bSel.closest(".demanda").dataset.id], bSel.dataset.sel);
     const bAgs = alvo.closest("button[data-agendas]");
     if (bAgs) return abrirAgendas(bAgs.dataset.agendas);
   });
-  // abrir/fechar cliente ou lista: desenha o conteúdo só quando abre (muitas demandas)
   $("#arvore").addEventListener("toggle", (ev) => {
     const el = ev.target;
     if (!el.dataset?.chave) return;
     const estava = abertos.has(el.dataset.chave);
     if (el.open && !estava) { abertos.add(el.dataset.chave); desenhar(); }
-    else if (!el.open && estava) { abertos.delete(el.dataset.chave); }
+    else if (!el.open && estava) abertos.delete(el.dataset.chave);
   }, true);
 
   $("#busca").oninput = desenhar;
-  for (const id of ["#selecao", "#status", "#gerente", "#ordem"]) $(id).onchange = () => { guardar(); desenhar(); };
+  for (const id of ["#filtroLista", "#filtroDemanda", "#gerente", "#ordem", "#encerradas"]) $(id).onchange = () => { guardar(); desenhar(); };
 
   await carregar();
-  atualizarContadores();
 </script>
 </body>
 </html>

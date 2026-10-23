@@ -90,7 +90,8 @@ validar o piloto (checklist em `docs/08-implantacao.md` §9) e o ok nas decisõe
 Depois do no-ar: identidade visual "Grafite + lima" com tema claro/escuro/automático (D26 — toda tela nova usa
 `assets/estilo.css` + `assets/tema.js`, ver `web/README.md`); migração 0003 com regras de listas, tela Listas por
 pasta, gerente FC/ED e correção da tarefa-estrutura "1-Atendimento da Base" (D27–D29).
-Fase 2 replanejada (D30–D37): migração 0004 + tela Demandas prontas; faltam kanban e painel de horas.
+Fase 2 replanejada (D30–D46): migrações 0004–0007 + tela única Demandas (listas, demandas e agendas) prontas;
+faltam reiniciar a sincronização (script em `supabase/manutencao/`), validar, kanban e painel de horas.
 
 ## Como mexer em algo de uma fase já entregue
 

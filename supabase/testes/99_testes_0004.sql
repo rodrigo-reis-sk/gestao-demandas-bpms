@@ -54,20 +54,19 @@ begin
   select * into v from vw_demandas where nome = 'Controle de Pesagens';
   if v.minutos_realizados <> 720 or v.minutos_planejados <> 9000 or v.etapa <> 'Atendimento avulso' or v.cliente_nome <> 'Semalo' then
     raise exception 'FALHOU: Controle de Pesagens %', row_to_json(v); end if;
-  if (select demandas_a_analisar from vw_pendencias_gestor) < 3 then raise exception 'FALHOU: contador de demandas'; end if;
   raise notice 'ok hierarquia e horas';
 end $$;
 
 \echo '== H3 seleção'
 set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000001';
 update tarefas set selecao = 'sincronizar' where id_externo in ('a2', 'd1');
-update tarefas set selecao = 'nao_sincronizar' where id_externo = 's2';
+update tarefas set selecao = 'nao_sincronizar' where id_externo in ('s2', 'a1');   -- desde a 0007 tudo nasce "sincronizar"
 reset request.jwt.claim.sub;
 select * from vw_horas_mes order by mes;
 do $$ begin
-  if (select selecao_por from tarefas where id_externo='a2') is null then raise exception 'FALHOU: nao registrou quem escolheu'; end if;
+  if (select selecao_por from tarefas where id_externo='a1') is null then raise exception 'FALHOU: nao registrou quem escolheu'; end if;
   if exists (select 1 from vw_agendas where incluida and demanda_id = (select id from tarefas where id_externo='a1')) then
-    raise exception 'FALHOU: agenda de demanda nao escolhida entrou'; end if;
+    raise exception 'FALHOU: agenda de demanda desmarcada entrou'; end if;
   if (select minutos_realizados from vw_demandas where nome='Controle de Pesagens') <> 480 then
     raise exception 'FALHOU: agenda marcada nao_sincronizar continuou somando'; end if;
   if (select sum(minutos_realizados) from vw_horas_mes) <> 720 then
