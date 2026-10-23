@@ -103,15 +103,21 @@ Outros gestores: mesmo caminho, com `papel = 'gestor'`. Esqueceu a senha: o admi
 5. **Listas**: marque *Sincronizar* nas listas do piloto (as novas ficam no topo, em amarelo).
 6. **Log** → *Sincronizar agora* de novo: como há consultor/lista recém-marcados, ele busca os últimos 90 dias.
 
-## 9. Validação do piloto (5 consultores, ~50 tarefas)
+## 9. Validação do piloto (listas do piloto)
 
-- [ ] As tarefas dos 5 consultores nas listas marcadas aparecem em `tarefas` (Table Editor), sem "1-Atendimento Base" nem a subtarefa do mês.
-- [ ] Mudar o status de uma tarefa no ClickUp → em segundos aparece no log como *webhook · atualizada*, e em `tarefas_historico` com quem alterou.
-- [ ] Registrar tempo numa tarefa → na próxima varredura aparece em `registros_tempo`.
-- [ ] Apagar uma tarefa de teste no ClickUp → `excluida_na_origem = true` (a linha não some).
-- [ ] Tarefa de consultor **não** marcado ou de lista **não** marcada não entra.
-- [ ] Tarefa da conta "BPMS" na FAP 32222 (Soldamaq) aparece com o Cleber como responsável.
-- [ ] O log mostra varreduras a cada 20 min, sem erro, por 2–3 dias.
+Revisado em 23/10/2026 para as regras da fase 2 (D32, D39, D41, D48). Conferência de horas de 3 demandas
+contra o ClickUp fica na fase 2.
+
+- [ ] **Listas:** encerradas ("Z" / "Concluída") chegaram como *Não sincronizar* (D18); as novas, como *a analisar*.
+- [ ] **Carga:** o Log mostra "Carga em andamento… faltam N lista(s)" até zerar, sem erro.
+- [ ] **Demandas:** as tarefas das listas marcadas aparecem na tela Demandas; "1-Atendimento Base" e "AAAA-MM Mês" **não** aparecem como demanda.
+- [ ] **Webhook:** mudar o status de uma tarefa no ClickUp → em segundos aparece no Log como *webhook · atualizada*, e em `tarefas_historico` com quem alterou.
+- [ ] **↻ Sincronizar da demanda:** alterar algo no ClickUp e clicar no botão → o cartão atualiza na hora e o Log ganha uma linha *manual* (D48).
+- [ ] **Tempo:** registrar tempo numa tarefa → na próxima varredura aparece em `registros_tempo`.
+- [ ] **Exclusão:** apagar uma tarefa de teste no ClickUp → `excluida_na_origem = true` (a linha não some).
+- [ ] **Lista não marcada:** tarefa de lista não marcada não entra (exceção: tarefa-mãe que falta, D39).
+- [ ] **Conta BPMS:** tarefa da conta "BPMS" na FAP 32222 (Soldamaq) aparece com o Cleber como responsável.
+- [ ] **Rotina:** o Log mostra varreduras a cada 20 min, sem erro, por 2–3 dias.
 
 ## Problemas comuns
 

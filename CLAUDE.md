@@ -86,7 +86,7 @@ Fase 1 **no ar** desde 23/10/2026: Supabase `bucicoxjvokbsnynsmfh`, funções pu
 https://rodrigo-reis-sk.github.io/gestao-demandas-bpms/ (repositório público `rodrigo-reis-sk/gestao-demandas-bpms`).
 Conexão ao ClickUp por **token pessoal de cada gestor** (D19; o Rodrigo não tem permissão para criar app OAuth).
 E-mail do Rodrigo no ClickUp e no login: `reis.c.rodrigo@gmail.com`. Falta: confirmar agendamento e webhook,
-validar o piloto (checklist em `docs/08-implantacao.md` §9) e o ok nas decisões D18, D20–D24 (P12).
+validar o piloto (checklist em `docs/08-implantacao.md` §9). Decisões D18, D20–D24 aprovadas em 23/10/2026 (P12).
 Depois do no-ar: identidade visual "Grafite + lima" com tema claro/escuro/automático (D26 — toda tela nova usa
 `assets/estilo.css` + `assets/tema.js`, ver `web/README.md`); migração 0003 com regras de listas, tela Listas por
 pasta, gerente FC/ED e correção da tarefa-estrutura "1-Atendimento da Base" (D27–D29).

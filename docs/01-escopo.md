@@ -95,6 +95,7 @@ vira exceção; R3 (kanban) espelha o status do ClickUp; R4 usa as horas das age
 | P7 | Quais listas sincronizar? | Buscar todas e parametrizar. Lista nova entra desmarcada, como "a analisar" (D14) |
 | P8 | Portal com login? | Link exclusivo por cliente, com opção de desativar (D16) |
 | P9 | App OAuth do ClickUp? | 22/10/2026: a tela *Settings → Apps* da conta do Rodrigo não mostra "Criar aplicativo" (só dono/admin do **workspace** cria). Seguimos com o **token pessoal de cada gestor (D19)**. OAuth fica opcional: se o dono do workspace criar o app, basta preencher o Client ID |
+| P12 | Decisões propostas na fase 1 (D18, D20–D24) | Aprovadas em 23/10/2026; D22 e D24 com texto ajustado pela D32/D33 |
 | P11 | Repositório público ou privado? | Público, por ora (Rodrigo, 22/10/2026). Telas no GitHub Pages (D25). Atenção: `seed.sql` tem e-mails da equipe e a lista de clientes |
 
 ## Pendências em aberto
@@ -102,4 +103,3 @@ vira exceção; R3 (kanban) espelha o status do ClickUp; R4 usa as horas das age
 | # | Pergunta | Impacto | Como resolver |
 |---|---|---|---|
 | P10 | A equipe ainda atribui tarefas novas à conta compartilhada "BPMS" ou é só histórico (FAPs do Cleber)? | Se for só histórico, orientar a equipe a atribuir direto à pessoa; o de-para (D17) continua para o histórico | Sem urgência — avaliar numa release futura |
-| P12 | As decisões propostas na fase 1 (D18, D20–D24) estão ok? | Ajustes pequenos de comportamento | Revisar `07-decisoes.md` antes da validação do piloto |

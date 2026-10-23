@@ -24,7 +24,8 @@ Roteiro de implantação: `docs/08-implantacao.md`. Telas: https://rodrigo-reis-
 - [x] Telas mínimas: **consultores**, **listas** (a analisar no topo, contador no menu), **log da sincronização** e **início**
 - [x] Migração `0002_sincronizacao.sql` + testes (`rodar.sh`: banco, tradução do ClickUp e cliente da API)
 - [x] Ajustes da 1ª sincronização real: regras de listas, tela Listas por pasta, gerente FC/ED, tarefa-estrutura (migração 0003, D27–D29)
-- [ ] Validar com o piloto: 5 consultores, ~50 tarefas (checklist em `08-implantacao.md`, seção 9)
+- [x] Decisões D18, D20–D24 aprovadas (P12) e checklist do piloto revisado para as regras da fase 2 (23/10/2026)
+- [ ] Validar com o piloto: listas do piloto (checklist em `08-implantacao.md`, seção 9)
 
 ## Fase 2 — Demandas, agendas, kanban e painel de horas (replanejada em 23/10/2026, D30–D37)
 - [x] Hierarquia Tarefa = demanda / Subtarefa = agenda, calculada no banco (migração 0004)
