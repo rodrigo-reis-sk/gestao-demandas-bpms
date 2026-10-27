@@ -93,7 +93,9 @@ pasta, gerente FC/ED e correção da tarefa-estrutura "1-Atendimento da Base" (D
 Fase 2 replanejada (D30–D51): migrações 0004–0007 no ar, sincronização reiniciada e carga completa (23/10/2026).
 Validação contra o ClickUp gerou a migração 0008 (D49 mês dentro de demanda, D50 recálculo por lista, D51 agendas
 atrasadas) — no ar e conferida. Kanban (`kanban.html`, D52) e painel de horas (`horas.html`, D53) feitos;
-falta o Rodrigo conferir com dados reais. Restam na fase 2: horas manuais (R4.2) e repositório só para exceções.
+conferência adiada (segue em paralelo). Fase 2 encerrada em 26/10/2026.
+Fase 3 decidida (D54–D57): formulário do consultor com link com chave + triagem (aprovar = criar no ClickUp à mão
+com `CH-xxxxx` no nome; a sincronização liga), contador no menu; portal do cliente na sequência.
 
 ## Como mexer em algo de uma fase já entregue
 

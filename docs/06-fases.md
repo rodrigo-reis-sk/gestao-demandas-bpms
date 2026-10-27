@@ -51,12 +51,15 @@ Roteiro de implantação: `docs/08-implantacao.md`. Telas: https://rodrigo-reis-
 - [~] **Painel de horas** por consultor × cliente × mês desde 01/01/2026 (`web/horas.html`, `vw_horas_mes`, D53), realizadas × agendadas × atrasadas — publicado; conferência **adiada em 26/10/2026**, segue em paralelo
 - Adiados em 26/10/2026 (fazer só se precisar): horas manuais por demanda (R4.2) e repositório/agrupamento para exceções (D37)
 
-## Fase 3 — Formulário do consultor, portal do cliente e triagem
-- [ ] Migrar o protótipo (`referencia/prototipos/formulario-demandas.html`) para `web/formulario.html`, gravando pela Edge Function `formulario`
-- [ ] Evidências em passos com prints em sequência; compressão das imagens; rascunho salvo no navegador
-- [ ] Portal do cliente com link exclusivo (`links_portal`) e acompanhamento do status
-- [ ] Tela de **triagem**: direcionar a um desenvolvedor (cria a demanda) ou enviar ao ClickUp
-- [ ] Aviso de chamado novo (e-mail ou notificação)
+## Fase 3 — Formulário do consultor, triagem e portal do cliente (decisões D54–D57, 26/10/2026)
+Ordem (D56): primeiro formulário + triagem; depois o portal.
+- [ ] Edge Function `formulario`: valida a chave do link (D57), limite por IP, campo-armadilha, grava chamado + evidências + prints (bucket privado `evidencias`)
+- [ ] Migrar o protótipo (`referencia/prototipos/formulario-demandas.html`) para `web/formulario.html` (listas de clientes/consultores vindas da função)
+- [ ] Evidências em passos com prints em sequência; compressão das imagens; rascunho salvo no navegador (R5.4)
+- [ ] Tela de **triagem**: ver o chamado e os prints, escolher desenvolvedor, aprovar (criar no ClickUp à mão com `CH-xxxxx` no nome), recusar ou pedir informação (D54)
+- [ ] Sincronização liga a tarefa ao chamado pelo código `CH-xxxxx` no nome (D54)
+- [ ] Contador de chamados novos no menu "Triagem" (D55)
+- [ ] Portal do cliente com link exclusivo (`links_portal`): abrir chamado e acompanhar o status (D56)
 
 ## Fase 4 — Criar no ClickUp e relatórios
 - [ ] Edge Function `clickup-criar` com a regra do legado + código da demanda no nome + prints anexados

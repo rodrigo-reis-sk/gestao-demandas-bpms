@@ -64,6 +64,8 @@ consumiu.
 - R5.3 **Triagem**: todo chamado entra como "novo". O gestor decide entre
   (a) direcionar a um desenvolvedor → vira demanda no kanban, ou
   (b) criar tarefa no ClickUp → a tarefa volta pela sincronização já ligada à demanda.
+  **26/10/2026 (D54):** a opção (a) deixa de existir como demanda só no sistema; aprovar = criar a tarefa no
+  ClickUp com o código `CH-xxxxx` no nome (à mão na fase 3, automático na fase 4).
 - R5.4 O rascunho do formulário não pode se perder se a pessoa fechar a tela.
 
 ### R6 — Simplicidade e custo
