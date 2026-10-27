@@ -25,6 +25,10 @@ Leia este arquivo inteiro antes de qualquer trabalho neste projeto.
 - Trabalhar **por fases** (ver `docs/06-fases.md`). Uma conversa por fase.
 - Ao final de cada fase: atualizar `docs/06-fases.md` (checklist), `docs/07-decisoes.md`
   e as pendências em `docs/01-escopo.md`.
+- **Publicação:** o Rodrigo publica (Supabase e `git push`). Sempre que algo ficar pronto para publicar, passar
+  **na própria conversa** os comandos prontos para copiar (PowerShell, na pasta do projeto), na ordem certa:
+  `db push` → `functions deploy <função>` → `git add` / `git commit` / `git push` (o push publica as telas no Pages,
+  então vai por último), e dizer o que conferir depois (seção de testes do `docs/08-implantacao.md`).
 
 ## Mapa da documentação
 
