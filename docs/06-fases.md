@@ -47,10 +47,9 @@ Roteiro de implantação: `docs/08-implantacao.md`. Telas: https://rodrigo-reis-
     a cada evento, até de lista não marcada). Nada se perdeu: a varredura recupera as das listas marcadas.
   - Correção pronta e testada: migração 0008 (D49 hierarquia, D50 recálculo por lista, D51 agendas **atrasadas**) e tela Demandas — falta aplicar e publicar. Motivo do D51: 332 agendas com data já passada (1.567h) contam como agendadas, contra 40 futuras (222h); 108 sem data.
 - [x] Correções da validação: migração 0008 + tela Demandas com "atrasadas" (D49–D51) — no ar em 23/10/2026. Conferido: Inovvati "2-Atendimento Folha" com 8 agendas (11h realizadas, 12h atrasadas), nenhuma demanda solta, webhook sem falhas (42 eventos, 1,7 s em média)
-- [~] **Kanban** espelhando o status do ClickUp, filtros por consultor, cliente e gerente (`web/kanban.html`, D52) — publicado, falta o Rodrigo conferir com dados reais
-- [~] **Painel de horas** por consultor × cliente × mês desde 01/01/2026 (`web/horas.html`, `vw_horas_mes`, D53), realizadas × agendadas × atrasadas — publicado, falta conferir
-- [ ] Horas manuais por demanda (R4.2), se ainda fizer sentido
-- [ ] Repositório/agrupamento só para exceções (D37), se aparecerem
+- [~] **Kanban** espelhando o status do ClickUp, filtros por consultor, cliente e gerente (`web/kanban.html`, D52) — publicado; conferência do Rodrigo **adiada em 26/10/2026**, segue em paralelo à fase 3
+- [~] **Painel de horas** por consultor × cliente × mês desde 01/01/2026 (`web/horas.html`, `vw_horas_mes`, D53), realizadas × agendadas × atrasadas — publicado; conferência **adiada em 26/10/2026**, segue em paralelo
+- Adiados em 26/10/2026 (fazer só se precisar): horas manuais por demanda (R4.2) e repositório/agrupamento para exceções (D37)
 
 ## Fase 3 — Formulário do consultor, portal do cliente e triagem
 - [ ] Migrar o protótipo (`referencia/prototipos/formulario-demandas.html`) para `web/formulario.html`, gravando pela Edge Function `formulario`
