@@ -15,7 +15,25 @@ export const CLICKUP = {
     periodo: "3d629467-1fc7-46d6-b925-42afba66df92",
     etapa: "2bffbedf-89bd-4b12-ba60-dff41f8d3cff",
     agenda: "af3cf86c-a293-4d1c-9916-180ad84f0a7b",
+    modulo: "81662e73-38c7-4600-98fa-941625125ee6",
+    apontamento: "e4204a9b-f556-41b4-9da7-87581b594693",
   },
+  // Criação de tarefa (fase 4): valores fixos do "Atendimento Avulso" e opções de Origem (legado)
+  valoresFixos: {
+    etapa: "099676dd-040a-4c0c-aea8-4aacd238dfaf",          // Atendimento Avulso
+    modulo: "b136ff65-14b6-476c-8d91-611f8b19e9b5",         // Atendimento Avulso
+    agendaRemoto: "4e86dc7c-63fa-4bed-9d2d-5916a49dc896",
+    apontamentoOsExperience: "b7821882-acbb-4fc5-9fbd-3a0457721b48",
+  },
+  opcoesOrigem: {
+    "Whatsapp": "ea52b08c-1678-466a-82ff-83e04f444f95",
+    "E-mail": "d1001cfa-f806-4de8-a7f8-a38103d886a9",
+    "PMO": "5e6751db-5302-411b-8660-afe1f7857a06",
+    "Service Desk": "1faf8fbe-33d5-4959-af7b-2ef0f0409eb9",
+    "Sucesso do Cliente": "06101ce4-a9e1-44f9-8847-603ec8dc4634",
+    "Consultor": "f6008801-6cfb-492a-b6e6-3861f46f8039",
+  } as Record<string, string>,
+  status: { semData: "backlog base", emAndamento: "em andamento" },
   pastasAdministrativas: ["1-BP-MS", "2- Horas Cruzadas", "3- Planos de Ação"],
   tarefaBase: "1-Atendimento Base",
   regexFap: /\b(\d{4,6})\b/,

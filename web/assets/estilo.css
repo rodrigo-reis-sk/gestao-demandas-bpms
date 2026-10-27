@@ -162,6 +162,7 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 #aviso div.erro { border-left-color: var(--erro); }
 #aviso div.ok { border-left-color: var(--ok); }
+#aviso div.alerta { border-left-color: var(--alerta); }
 
 /* ---------- Login ---------- */
 .login { max-width: 380px; margin: 9vh auto; }
@@ -203,7 +204,7 @@ textarea {
   border: 1px solid var(--borda); border-radius: var(--raio); background: var(--cartao); color: var(--texto);
 }
 textarea:focus { outline: 2px solid var(--acento); outline-offset: -1px; border-color: transparent; }
-.campos select, .decisao select { width: 100%; }
+.campos select, .decisao select, .decisao input { width: 100%; }
 .campos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
 .campos .inteiro { grid-column: 1 / -1; }
 @media (max-width: 640px) { .campos { grid-template-columns: minmax(0, 1fr); } }

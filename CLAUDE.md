@@ -107,6 +107,9 @@ Fase 3, parte 1 **no ar** em 26/10/2026 (D58–D61, commit `ad97a51`): migraçã
 `formulario.html`, `complementar.html` e `triagem.html` (`assets/evidencias.js` = base das telas sem login). Testes do §10 com o Rodrigo.
 Portal do cliente (D62–D64) **pronto e testado localmente** em 26/10/2026, falta publicar (`08-implantacao.md` §11): migração 0010,
 ações do portal na função `formulario`, `portal.html` e links do portal na Triagem.
+Fase 4 decidida (D65–D72). Item 1 **pronto e testado localmente** em 26/10/2026, falta publicar (`08-implantacao.md` §12):
+migração 0011, Edge Function `clickup-criar` (regra do legado em `_compartilhado/clickup-criacao.ts`), Triagem com
+"Aprovar e criar no ClickUp", "Aprovar, crio à mão" e "Reenviar prints". Próximos: relatório (D71) e visão do consultor (D72).
 
 ## Como mexer em algo de uma fase já entregue
 

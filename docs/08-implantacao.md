@@ -166,6 +166,35 @@ Testes (marcar ao conferir):
 - [ ] **Recusa:** recusar com motivo → o portal mostra *Não aprovado* e o motivo.
 - [ ] **Desativar:** desativar o link → o portal mostra "Este link do portal não vale mais".
 
+## 12. Fase 4 — criar no ClickUp pela triagem (26/10/2026)
+
+Se o §11 (portal) ainda não foi publicado, o mesmo `db push` aplica a 0010 e a 0011 juntas.
+
+```powershell
+npx supabase@latest db push                                      # aplica a 0011_criacao_tarefa.sql
+npx supabase@latest functions deploy clickup-criar --use-api     # função nova
+git add supabase web docs CLAUDE.md
+git commit -m "Fase 4: criar no ClickUp pela triagem (D65-D72)"
+git push                                                         # publica a triagem nova no Pages
+```
+
+Antes de testar: a sua conta do ClickUp conectada em **Meu perfil** e a lista do cliente marcada para sincronizar.
+Use um chamado de teste numa lista de teste (ou num cliente piloto) e apague a tarefa no ClickUp depois.
+
+Testes (marcar ao conferir):
+
+- [ ] **Criar:** chamado novo com 2 prints → escolher dev e consultor, a lista e *Aprovar e criar no ClickUp* → aviso "Tarefa criada";
+      no ClickUp: lista certa → `1-Atendimento Base` → `2026-10 Outubro` → `CH-xxxxx - Título`, criada por você, com os dois
+      responsáveis, Etapa/Módulo "Atendimento Avulso", Agenda "Remoto", Apontamento "OS Experience", Parceiro, Usuário cliente,
+      Detalhamento, status **backlog base**, descrição com os passos e os 2 prints anexados em ordem.
+- [ ] **Ligação:** na Triagem o chamado fica "Tarefa criada" na hora (sem esperar a varredura) e aparece em Demandas/Kanban.
+- [ ] **Com data:** outro chamado com vencimento no mês que vem e estimativa de 4 h → tarefa no mês do vencimento, com data, no status
+      padrão da lista e estimativa 4 h.
+- [ ] **Sem acesso:** responsável que não enxerga a pasta → ganha "Apenas exibição" (aviso na tela).
+- [ ] **Clique duplo:** clicar duas vezes seguidas → só uma tarefa.
+- [ ] **Sem conta:** gestor sem ClickUp conectado → botão desligado com o motivo; *Aprovar, crio à mão* continua funcionando.
+- [ ] **Renomear:** renomear a tarefa criada antes da sincronização → continua ligada (pelo id).
+
 ## Problemas comuns
 
 | Sintoma | O que fazer |
@@ -176,4 +205,8 @@ Testes (marcar ao conferir):
 | "Acesso não liberado" no login | Falta a linha em `usuarios_sistema` (passo 6) |
 | Formulário: "Link do formulário inválido" | A chave foi trocada: copie o link de novo na Triagem |
 | Triagem sem os prints | Conferir o bucket `evidencias` e a política `gestor_le_evidencias` em `storage.objects` |
+| Triagem: "Conecte a sua conta do ClickUp" | Meu perfil → conectar com o seu token pessoal (`pk_...`) |
+| Triagem: "não está marcada para sincronizar" | Demandas → marcar a lista do cliente como Sincronizar |
+| Triagem: "ainda não tem usuário ligado na origem" | Rodar a sincronização (traz os membros) ou conferir o e-mail no cadastro de Consultores |
+| Triagem: tarefa criada, prints pendentes | Botão *Reenviar prints*; se repetir, ver o erro na própria mensagem |
 | Varredura não roda sozinha | `select * from cron.job;` e `select * from net._http_response order by created desc limit 5;` |

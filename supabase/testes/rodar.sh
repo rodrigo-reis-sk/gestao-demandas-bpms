@@ -17,15 +17,16 @@ for f in "$DIR/00_supabase_simulado.sql" \
          "$RAIZ/migrations/0008_correcoes_validacao.sql" \
          "$RAIZ/migrations/0009_chamados.sql" \
          "$RAIZ/migrations/0010_portal.sql" \
+         "$RAIZ/migrations/0011_criacao_tarefa.sql" \
          "$RAIZ/seed.sql" "$RAIZ/seed.sql" \
-         "$DIR/99_testes.sql" "$DIR/99_testes_fase1.sql" "$DIR/99_testes_0003.sql" "$DIR/99_testes_0004.sql" "$DIR/99_testes_0005.sql" "$DIR/99_testes_0006.sql" "$DIR/99_testes_0007.sql" "$DIR/99_testes_0008.sql" "$DIR/99_testes_0009.sql" "$DIR/99_testes_0010.sql"; do
+         "$DIR/99_testes.sql" "$DIR/99_testes_fase1.sql" "$DIR/99_testes_0003.sql" "$DIR/99_testes_0004.sql" "$DIR/99_testes_0005.sql" "$DIR/99_testes_0006.sql" "$DIR/99_testes_0007.sql" "$DIR/99_testes_0008.sql" "$DIR/99_testes_0009.sql" "$DIR/99_testes_0010.sql" "$DIR/99_testes_0011.sql"; do
   echo "### $(basename "$f")"
   (cd "$DIR" && psql -q -v ON_ERROR_STOP=1 -d teste_bpms -f "$f")
 done
 # Edge Functions: testes de tradução e do cliente da API (precisa do Deno)
 if command -v deno >/dev/null; then
-  echo "### funcoes.test.ts e formulario.test.ts"
-  (cd "$RAIZ/.." && deno test -q --allow-write=supabase/testes supabase/testes/funcoes.test.ts supabase/testes/formulario.test.ts)
+  echo "### funcoes.test.ts, formulario.test.ts e criacao.test.ts"
+  (cd "$RAIZ/.." && deno test -q --allow-write=supabase/testes --allow-env=CLICKUP_TEAM_ID supabase/testes/funcoes.test.ts supabase/testes/formulario.test.ts supabase/testes/criacao.test.ts)
   echo "### 99_testes_traducao.sql"
   (cd "$DIR" && psql -q -v ON_ERROR_STOP=1 -d teste_bpms -f 99_testes_traducao.sql)
 else

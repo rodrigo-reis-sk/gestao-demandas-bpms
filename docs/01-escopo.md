@@ -1,6 +1,6 @@
 # 01 — Escopo
 
-Última revisão: 22/10/2026 (código da fase 1 pronto; implantação pendente).
+Última revisão: 26/10/2026 (fase 4: criação no ClickUp pela triagem, D65–D72).
 
 ## Problema
 
@@ -66,6 +66,7 @@ consumiu.
   (b) criar tarefa no ClickUp → a tarefa volta pela sincronização já ligada à demanda.
   **26/10/2026 (D54):** a opção (a) deixa de existir como demanda só no sistema; aprovar = criar a tarefa no
   ClickUp com o código `CH-xxxxx` no nome (à mão na fase 3, automático na fase 4).
+  **26/10/2026 (D65–D70):** "Aprovar e criar no ClickUp" cria a tarefa pelo sistema, com o token de quem clicou; o modo manual continua (D66).
 - R5.4 O rascunho do formulário não pode se perder se a pessoa fechar a tela.
 - R5.5 **(26/10/2026, D58–D60)** O chamado tem desenvolvedor (obrigatório) e consultor (opcional). "Pedir informação"
   gera um link para o consultor complementar. Limite de 10 envios por hora por IP.
@@ -108,4 +109,5 @@ vira exceção; R3 (kanban) espelha o status do ClickUp; R4 usa as horas das age
 
 | # | Pergunta | Impacto | Como resolver |
 |---|---|---|---|
+| P13 | Chamado do **portal**: qual opção do campo **Origem** do ClickUp usar? (hoje fica vazio; o formulário do consultor usa "Consultor", D68) | Só o preenchimento do campo nas tarefas criadas pelo portal | Rodrigo escolhe uma das 6 opções (ou criar "Portal do cliente" no ClickUp) |
 | P10 | A equipe ainda atribui tarefas novas à conta compartilhada "BPMS" ou é só histórico (FAPs do Cleber)? | Se for só histórico, orientar a equipe a atribuir direto à pessoa; o de-para (D17) continua para o histórico | Sem urgência — avaliar numa release futura |

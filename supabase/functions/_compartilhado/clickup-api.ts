@@ -8,6 +8,7 @@
 import { type Banco, rpc } from "./base.ts";
 
 const API = "https://api.clickup.com/api/v2";
+const API_V3 = "https://api.clickup.com/api/v3";   // só para liberar acesso à pasta (igual ao legado)
 const TEMPO_MAXIMO_MS = 20_000;
 const TENTATIVAS = 5;
 const MAX_PAGINAS = 100;
@@ -40,8 +41,12 @@ export class ClienteClickUp {
     return this.token.startsWith("pk_") ? this.token : `Bearer ${this.token}`;
   }
 
-  async chamar<T = any>(metodo: string, caminho: string, consulta: Consulta = {}, corpo?: unknown): Promise<T> {
-    const url = new URL(API + caminho);
+  /**
+   * Uma chamada à API, com as proteções acima. `corpo` em JSON, ou FormData (envio de arquivo).
+   * `base` troca a versão da API (v3 só no compartilhamento de pasta).
+   */
+  async chamar<T = any>(metodo: string, caminho: string, consulta: Consulta = {}, corpo?: unknown, base = API): Promise<T> {
+    const url = new URL(base + caminho);
     for (const [chave, valor] of Object.entries(consulta)) {
       if (valor === undefined || valor === null) continue;
       if (Array.isArray(valor)) valor.forEach((v) => url.searchParams.append(`${chave}[]`, String(v)));
@@ -52,10 +57,13 @@ export class ClienteClickUp {
     for (let tentativa = 1; tentativa <= TENTATIVAS; tentativa++) {
       let resp: Response;
       try {
+        // FormData: o fetch monta o Content-Type com o "boundary" sozinho
+        const ehArquivo = corpo instanceof FormData;
         resp = await fetch(url, {
           method: metodo,
-          headers: { Authorization: this.autorizacao(), "Content-Type": "application/json" },
-          body: corpo === undefined ? undefined : JSON.stringify(corpo),
+          headers: ehArquivo ? { Authorization: this.autorizacao() }
+                             : { Authorization: this.autorizacao(), "Content-Type": "application/json" },
+          body: corpo === undefined ? undefined : ehArquivo ? corpo : JSON.stringify(corpo),
           signal: AbortSignal.timeout(TEMPO_MAXIMO_MS),
         });
       } catch (e) {
@@ -164,6 +172,49 @@ export class ClienteClickUp {
       todos.push(...(resp.data ?? []));
     }
     return todos;
+  }
+
+  // ---------------------------------------------------------------- criação de tarefa (fase 4)
+
+  /** Tarefas de uma lista (sem subtarefas, sem fechadas), uma página de até 100. */
+  tarefasDaLista(listaId: string, pagina = 0) {
+    return this.chamar<{ tasks: any[]; last_page?: boolean }>("GET", `/list/${listaId}/task`, { page: pagina, archived: false });
+  }
+
+  criarTarefa(listaId: string, corpo: unknown) {
+    return this.chamar("POST", `/list/${listaId}/task`, {}, corpo);
+  }
+
+  alterarTarefa(tarefaId: string, corpo: unknown) {
+    return this.chamar("PUT", `/task/${tarefaId}`, {}, corpo);
+  }
+
+  /** Grava um campo personalizado (dropdown: valor = id da opção). */
+  gravarCampo(tarefaId: string, campoId: string, valor: unknown) {
+    return this.chamar("POST", `/task/${tarefaId}/field/${campoId}`, {}, { value: valor });
+  }
+
+  /** Ids de quem enxerga a lista. */
+  async membrosDaLista(listaId: string): Promise<string[]> {
+    const r = await this.chamar("GET", `/list/${listaId}/member`);
+    return (r.members ?? []).map((m: any) => String(m.id));
+  }
+
+  lista(listaId: string) {
+    return this.chamar("GET", `/list/${listaId}`);
+  }
+
+  /** Libera "Apenas exibição" (nível 1) para a pessoa na pasta (ou lista) — API v3, como no legado. */
+  liberarExibicao(equipeId: string, tipo: "folder" | "list", id: string, usuarioId: string) {
+    return this.chamar("PATCH", `/workspaces/${equipeId}/${tipo}/${id}/acls`, {},
+      { entries: [{ kind: "user", id: String(usuarioId), permission_level: 1 }] }, API_V3);
+  }
+
+  /** Anexa um arquivo à tarefa. */
+  anexar(tarefaId: string, nomeArquivo: string, arquivo: Blob) {
+    const form = new FormData();
+    form.append("attachment", arquivo, nomeArquivo);
+    return this.chamar("POST", `/task/${tarefaId}/attachment`, {}, form);
   }
 
   async webhooks(equipeId: string): Promise<any[]> {

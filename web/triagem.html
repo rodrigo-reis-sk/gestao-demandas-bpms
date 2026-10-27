@@ -15,9 +15,10 @@
 <body>
 <main>
   <h1>Triagem</h1>
-  <p class="sub">Chamados abertos pelo formulário. Aprovar = escolher o desenvolvedor (e o consultor) e criar a tarefa
-    no ClickUp à mão com o código no nome (ex.: <code>CH-00012 - Ajuste DANFE</code>). A sincronização reconhece o código
-    e liga a tarefa ao chamado (D54).</p>
+  <p class="sub">Chamados do formulário e do portal. <b>Aprovar e criar no ClickUp</b> cria a tarefa com a sua conta
+    (lista do cliente → 1-Atendimento Base → mês), com o código no nome (ex.: <code>CH-00012 - Ajuste DANFE</code>),
+    os responsáveis, o passo a passo e os prints (D65). Se preferir, <b>Aprovar, crio à mão</b>: a sincronização
+    reconhece o código no nome e liga a tarefa ao chamado (D54, D66).</p>
 
   <div class="cartao">
     <h2>Link do formulário</h2>
@@ -69,7 +70,7 @@
 </main>
 
 <script type="module">
-  import { sb, esc, $, exigirLogin, montarMenu, atualizarContadores, aviso, dataHora, haQuanto } from "./assets/comum.js";
+  import { sb, esc, $, exigirLogin, montarMenu, atualizarContadores, aviso, dataHora, haQuanto, chamarFuncao } from "./assets/comum.js";
 
   const { usuario } = await exigirLogin();
   await montarMenu(usuario);
@@ -86,6 +87,8 @@
 
   let chamados = [];
   let consultores = [];
+  let listas = [];                      // listas marcadas e ativas (onde a tarefa pode nascer)
+  let conectado = false;                // o gestor tem conta do ClickUp conectada (D11/D19)
   const abertos = new Set();            // cartões abertos (mantém aberto ao redesenhar)
 
   try { const f = JSON.parse(localStorage.getItem(FILTRO) || "{}"); if (f.status) $("#f-status").value = f.status; if (f.ordem) $("#f-ordem").value = f.ordem; } catch { /* ignora */ }
@@ -168,13 +171,18 @@
 
   // ---------------------------------------------------------------- dados
   async function carregar() {
-    const [ch, co] = await Promise.all([
+    const [ch, co, li, ct] = await Promise.all([
       sb.from("vw_chamados").select("*").order("criado_em", { ascending: false }).limit(500),
       sb.from("consultores").select("id, nome").eq("ativo", true).eq("sincronizar", true).order("nome"),
+      sb.from("clientes_faps").select("id, cliente_id, nome_lista, tipo")
+        .eq("situacao_sincronizacao", "sincronizar").eq("ativa", true).order("nome_lista"),
+      sb.from("contas_integracao").select("situacao").eq("usuario_id", usuario.id).eq("sistema", "clickup").maybeSingle(),
     ]);
     if (ch.error) { $("#lista").innerHTML = `<p class="erro-texto">${esc(ch.error.message)}</p>`; return; }
     chamados = ch.data || [];
     consultores = co.data || [];
+    listas = li.data || [];
+    conectado = ct.data?.situacao === "ativa";
     desenhar();
     atualizarContadores();
   }
@@ -201,6 +209,19 @@
       `<option value="${c.id}" ${atual?.id === c.id ? "selected" : ""}>${esc(c.nome)}</option>`).join("");
   }
   const nomeTarefa = (c) => `${c.codigo} - ${c.titulo}`;
+  function opcoesLista(c) {
+    const doCliente = listas.filter((l) => l.cliente_id === c.cliente_id);
+    if (!doCliente.length) return `<option value="">Nenhuma lista marcada para este cliente</option>`;
+    return doCliente.map((l) => `<option value="${l.id}" ${l.id === c.lista_sugerida_id ? "selected" : ""}>${esc(l.nome_lista)}${l.tipo !== "avulso" ? ` (${esc(l.tipo)})` : ""}</option>`).join("");
+  }
+  // Por que o botão "criar" está desligado (vazio = pode criar)
+  function bloqueioCriar(c) {
+    if (!conectado) return "Conecte a sua conta do ClickUp em Meu perfil para criar pelo sistema.";
+    if (c.cliente_digitado) return "Cliente digitado fora da lista: crie à mão.";
+    if (!listas.some((l) => l.cliente_id === c.cliente_id)) return "O cliente não tem lista marcada para sincronizar (Demandas).";
+    if (c.criacao_situacao === "criando" && Date.now() - new Date(c.criacao_iniciada_em) < 180_000) return "Criação em andamento.";
+    return "";
+  }
   const linkComplemento = (c) => new URL("complementar.html?c=" + encodeURIComponent(c.token_complemento), location.href).href;
 
   function desenhar() {
@@ -219,12 +240,15 @@
   function cartao(c) {
     const dev = c.desenvolvedor_id ? { id: c.desenvolvedor_id, nome: c.desenvolvedor_nome } : null;
     const con = c.consultor_id ? { id: c.consultor_id, nome: c.consultor_nome } : null;
-    const fechado = ["tarefa_criada", "concluido"].includes(c.status);
+    // tarefa já criada pelo sistema (aguardando a ligação) também fecha a decisão
+    const fechado = ["tarefa_criada", "concluido"].includes(c.status) || !!c.tarefa_criada_id_externo;
+    const podeCriar = !["recusado"].includes(c.status);
+    const bloqueio = bloqueioCriar(c);
     const portal = c.canal === "portal_cliente";
     return `<details class="chamado" data-id="${c.id}" data-portal="${portal ? 1 : 0}" data-cliente-ve="${c.cliente_tem_portal ? 1 : 0}">
       <summary>
         <span><span class="codigo">${esc(c.codigo)}</span> · <span class="titulo">${esc(c.titulo)}</span></span>
-        <span>${selo(c.status)}</span>
+        <span>${c.status === "aprovado" && c.tarefa_criada_id_externo ? `<span class="selo ok">Tarefa criada · ligando</span>` : selo(c.status)}</span>
         <span class="meta">${portal ? `<span class="selo novo" title="Aberto pelo cliente no portal">portal</span>` : ""}
           <span><b>${esc(c.cliente_nome || "—")}</b>${portal && c.solicitante_nome ? ` · ${esc(c.solicitante_nome)}` : ""}${c.cliente_digitado ? ' <span class="selo alerta" title="Digitado: confira o cliente">fora da lista</span>' : ""}</span>
           <span>Dev: <b>${esc(c.desenvolvedor_nome || "—")}</b></span>
@@ -251,14 +275,22 @@
           <div class="decisao">
             <div><label>Desenvolvedor</label><select data-campo="dev">${opcoesConsultor(dev, "Escolha…")}</select></div>
             <div><label>Consultor (opcional)</label><select data-campo="con">${opcoesConsultor(con, "Nenhum")}</select></div>
+            ${podeCriar && !c.cliente_digitado ? `
+            <div><label>Lista no ClickUp</label><select data-campo="lista">${opcoesLista(c)}</select></div>
+            <div class="decisao" style="gap:0 12px">
+              <div><label>Vencimento (opcional)</label><input type="date" data-campo="venc" title="Sem data: nasce em “backlog base”. Com data: status padrão da lista, no mês do vencimento"></div>
+              <div><label>Estimativa em horas (opcional)</label><input type="number" data-campo="estim" min="0.5" max="500" step="0.5" inputmode="decimal"></div>
+            </div>` : ""}
           </div>
           <p class="acoes" style="margin-top:12px">
-            ${c.status !== "recusado" ? `<button type="button" class="primario" data-acao="${c.status === "aprovado" ? "responsaveis" : "aprovar"}">${c.status === "aprovado" ? "Salvar responsáveis" : "Aprovar"}</button>` : ""}
-            ${c.status !== "aprovado" && c.status !== "recusado" ? `<button type="button" data-acao="responsaveis">Salvar responsáveis</button>` : ""}
+            ${podeCriar ? `<button type="button" class="primario" data-acao="criar" ${bloqueio ? `disabled title="${esc(bloqueio)}"` : ""}>Aprovar e criar no ClickUp</button>` : ""}
+            ${c.status !== "recusado" && c.status !== "aprovado" ? `<button type="button" data-acao="aprovar">Aprovar, crio à mão</button>` : ""}
+            ${c.status !== "recusado" ? `<button type="button" data-acao="responsaveis">Salvar responsáveis</button>` : ""}
             <button type="button" data-acao="abrir-pedir">Pedir informação</button>
             ${c.status !== "recusado" ? `<button type="button" data-acao="abrir-recusar">Recusar</button>` : ""}
             ${["recusado", "aguardando_informacao", "aprovado"].includes(c.status) ? `<button type="button" data-acao="reabrir">Voltar para novo</button>` : ""}
           </p>
+          ${podeCriar && bloqueio ? `<p class="suave" style="margin:6px 0 0">${esc(bloqueio)}</p>` : ""}
           <div class="caixa-texto" hidden style="margin-top:10px">
             <label class="rotulo-texto"></label>
             <textarea data-campo="texto"></textarea>
@@ -271,9 +303,28 @@
   }
 
   // Bloco que muda conforme a situação: o que fazer no ClickUp, link do complemento, tarefa ligada, motivo da recusa.
+  // Resultado da criação pelo sistema (D65, D68): quem criou, avisos e "Reenviar prints".
+  function blocoCriacao(c) {
+    if (!c.criacao_situacao) return "";
+    const reenviar = c.tarefa_criada_id_externo && c.anexos_pendentes > 0
+      ? `<p class="acoes" style="margin-top:8px"><button type="button" data-acao="reenviar">Reenviar prints (${c.anexos_pendentes} pendente(s))</button></p>` : "";
+    const msg = c.criacao_mensagem ? `<br><span class="${c.criacao_situacao === "erro" ? "erro-texto" : "suave"}">${esc(c.criacao_mensagem)}</span>` : "";
+    const quem = `${c.criacao_por_nome ? " por " + esc(c.criacao_por_nome) : ""}${c.criacao_concluida_em ? " em " + esc(dataHora(c.criacao_concluida_em)) : ""}`;
+    if (c.criacao_situacao === "criando" && !c.tarefa_criada_id_externo) {
+      return `<div class="pergunta situacao"><b>Criando a tarefa no ClickUp…</b> (desde ${esc(dataHora(c.criacao_iniciada_em))}). Atualize em instantes.</div>`;
+    }
+    if (!c.tarefa_criada_id_externo) {
+      return `<div class="pergunta situacao"><b>A criação no ClickUp falhou${quem}.</b>${msg}<br><span class="suave">Corrija e tente de novo, ou crie à mão.</span></div>`;
+    }
+    const link = c.criacao_url ? `<a href="${esc(c.criacao_url)}" target="_blank" rel="noopener">abrir no ClickUp</a>` : esc(c.tarefa_criada_id_externo);
+    return `<div class="pergunta situacao"><b>Criada pelo sistema${quem}</b>${c.criacao_lista_nome ? ` na lista <b>${esc(c.criacao_lista_nome)}</b>` : ""} · ${link}
+      ${c.status === "aprovado" ? `<br><span class="suave">Aguardando a sincronização ligar a tarefa ao chamado.</span>` : ""}${msg}${reenviar}</div>`;
+  }
+
   function situacao(c) {
+    if (c.status === "aprovado" && c.tarefa_criada_id_externo) return blocoCriacao(c);
     if (c.status === "aprovado") {
-      return `<div class="pergunta situacao"><b>Criar no ClickUp</b> — tarefa com este nome${c.lista_sugerida ? `, na lista <b>${esc(c.lista_sugerida)}</b>` : ""}:
+      return `${blocoCriacao(c)}<div class="pergunta situacao"><b>Criar no ClickUp</b> — clique em <b>Aprovar e criar no ClickUp</b> ou, à mão, crie a tarefa com este nome${c.lista_sugerida ? `, na lista <b>${esc(c.lista_sugerida)}</b>` : ""}:
         <div class="copiar" style="margin:8px 0"><input type="text" readonly value="${esc(nomeTarefa(c))}" aria-label="Nome da tarefa">
           <button type="button" data-copiar="${esc(nomeTarefa(c))}">Copiar nome</button></div>
         Responsáveis: <b>${esc(c.desenvolvedor_nome || "—")}</b> (desenvolvedor)${c.consultor_nome ? ` e <b>${esc(c.consultor_nome)}</b> (consultor)` : ""}.
@@ -288,13 +339,14 @@
           : `Mande para ${esc(c.consultor_nome || "o consultor")}.`} Quando responderem, o chamado volta para “Novo”.</span></div>`;
     }
     if (c.status === "tarefa_criada") {
-      return `<div class="pergunta situacao"><b>Tarefa ligada</b> ${c.tarefa_ligada_em ? "em " + esc(dataHora(c.tarefa_ligada_em)) : ""}:
+      return `${blocoCriacao(c)}<div class="pergunta situacao"><b>Tarefa ligada</b> ${c.tarefa_ligada_em ? "em " + esc(dataHora(c.tarefa_ligada_em)) : ""}:
         ${c.tarefa_url ? `<a href="${esc(c.tarefa_url)}" target="_blank" rel="noopener">${esc(c.tarefa_nome || c.tarefa_criada_id_externo)}</a>` : esc(c.tarefa_nome || c.tarefa_criada_id_externo || "")}
         ${c.tarefa_status ? ` · <span class="selo">${esc(c.tarefa_status)}</span>` : ""}</div>`;
     }
     if (c.status === "recusado") {
       return `<div class="pergunta situacao"><b>Recusado${c.triado_por_nome ? " por " + esc(c.triado_por_nome) : ""}:</b> ${esc(c.decisao_observacao || "")}</div>`;
     }
+    if (c.criacao_situacao === "erro" || c.criacao_situacao === "criando") return blocoCriacao(c);
     if (c.informacao_pedida && c.complementado_em) {
       return `<div class="pergunta situacao"><b>Informação pedida:</b> ${esc(c.informacao_pedida)}<br><span class="suave">Respondida em ${esc(dataHora(c.complementado_em))} — veja os passos marcados como complemento.</span></div>`;
     }
@@ -341,7 +393,7 @@
       p_id: det.dataset.id, p_acao: acao, p_texto: texto, p_desenvolvedor: dev, p_consultor: con,
     });
     if (error) { aviso(error.message, "erro"); return; }
-    const msgs = { aprovar: "Aprovado. Agora crie a tarefa no ClickUp com o nome indicado.", recusar: "Chamado recusado.",
+    const msgs = { aprovar: "Aprovado. Agora crie a tarefa no ClickUp à mão com o nome indicado.", recusar: "Chamado recusado.",
                    pedir_informacao: "Pedido registrado. Copie o link e mande ao consultor.", reabrir: "Chamado voltou para novo.",
                    responsaveis: "Responsáveis salvos." };
     aviso(msgs[acao], "ok");
@@ -349,6 +401,44 @@
       copiar(linkComplemento({ token_complemento: data.token_complemento }), "Pedido registrado e link do complemento copiado.");
     }
     await carregar();
+  }
+
+  // ---------------------------------------------------------------- criar no ClickUp (D65)
+  async function criarNoClickUp(det, b) {
+    const dev = $('select[data-campo="dev"]', det)?.value || null;
+    const lista = $('select[data-campo="lista"]', det)?.value || null;
+    if (!dev) { aviso("Escolha o desenvolvedor antes de aprovar.", "erro"); return; }
+    if (!lista) { aviso("Escolha a lista do cliente.", "erro"); return; }
+    const estim = $('input[data-campo="estim"]', det)?.value;
+    const texto = b.textContent;
+    b.disabled = true; b.textContent = "Criando no ClickUp…";
+    try {
+      const r = await chamarFuncao("clickup-criar", {
+        acao: "criar", chamado_id: det.dataset.id, lista_id: lista, desenvolvedor_id: dev,
+        consultor_id: $('select[data-campo="con"]', det)?.value || null,
+        vencimento: $('input[data-campo="venc"]', det)?.value || null,
+        estimativa_horas: estim ? Number(String(estim).replace(",", ".")) : null,
+        link_triagem: new URL("triagem.html", location.href).href,
+      });
+      aviso(`Tarefa criada: ${r.nome}.` + (r.avisos?.length ? " " + r.avisos.join(" ") : ""), r.avisos?.length ? "alerta" : "ok");
+    } catch (e) {
+      aviso(e.message, "erro");
+    } finally {
+      b.disabled = false; b.textContent = texto;
+      await carregar();
+    }
+  }
+
+  async function reenviarPrints(det, b) {
+    b.disabled = true; b.textContent = "Enviando…";
+    try {
+      const r = await chamarFuncao("clickup-criar", { acao: "reenviar_prints", chamado_id: det.dataset.id });
+      aviso(`${r.prints_enviados} print(s) anexado(s).` + (r.avisos?.length ? " " + r.avisos.join(" ") : ""), r.prints_pendentes ? "alerta" : "ok");
+    } catch (e) {
+      aviso(e.message, "erro");
+    } finally {
+      await carregar();
+    }
   }
 
   $("#lista").addEventListener("toggle", (ev) => {
@@ -373,7 +463,9 @@
         : (clienteVe ? "Motivo da recusa (o cliente vê este texto no portal)" : "Motivo da recusa");
       $('button[data-acao="confirmar"]', caixa).textContent = a === "abrir-pedir" ? "Pedir e copiar o link" : "Recusar chamado";
       $("textarea", caixa).focus();
-    } else if (a === "cancelar") caixa.hidden = true;
+    } else if (a === "criar") criarNoClickUp(det, b);
+    else if (a === "reenviar") reenviarPrints(det, b);
+    else if (a === "cancelar") caixa.hidden = true;
     else if (a === "confirmar") {
       const texto = $("textarea", caixa).value.trim();
       if (!texto) { aviso("Escreva o texto antes de confirmar.", "erro"); return; }

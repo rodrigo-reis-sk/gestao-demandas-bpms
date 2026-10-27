@@ -71,7 +71,15 @@ Legenda: `[~]` código pronto e testado localmente (`rodar.sh` + telas no navega
 - [~] Triagem: área **Links do portal dos clientes** (criar, copiar, desativar/reativar, validade, último acesso), filtro por origem e selo "portal"
 - [ ] Publicar o portal: `db push` (0010), `functions deploy formulario`, `git push` (`08-implantacao.md` §11)
 
-## Fase 4 — Criar no ClickUp e relatórios
-- [ ] Edge Function `clickup-criar` com a regra do legado + código da demanda no nome + prints anexados
-- [ ] Relatório de horas por consultor, cliente e período (ClickUp × manual)
-- [ ] Visão do consultor (somente leitura das demandas dele), se P3 confirmar
+## Fase 4 — Criar no ClickUp e relatórios (decisões D65–D72, 26/10/2026)
+Ordem: criar no ClickUp → relatório → visão do consultor; cada item publicado e testado antes do próximo.
+- [~] Migração `0011_criacao_tarefa.sql`: reserva com trava (D70), resultado da criação, print enviado por anexo (D69),
+  gatilho de ligação também pelo id da tarefa (D65), `vw_chamados` com a criação + testes `99_testes_0011.sql`
+- [~] Edge Function `clickup-criar` (D65–D70): token do gestor que clicou, regra do legado (`_compartilhado/clickup-criacao.ts`:
+  acesso à pasta, base, mês, tarefa com campos, responsáveis e descrição, prints em ordem), tarefa gravada na hora; ação
+  `reenviar_prints`; testes `criacao.test.ts` com ClickUp simulado
+- [~] Triagem: **Aprovar e criar no ClickUp** (lista do cliente, vencimento e estimativa opcionais), **Aprovar, crio à mão** (D66),
+  situação da criação (quem criou, link, avisos, erro) e **Reenviar prints**; botão desligado com o motivo quando não dá para criar
+- [ ] Publicar e testar a criação (`08-implantacao.md` §12)
+- [ ] Relatório de horas por consultor, cliente e período: agendas × tempo rastreado, CSV (D71)
+- [ ] Visão do consultor (somente leitura das demandas dele): login e RLS (D72)

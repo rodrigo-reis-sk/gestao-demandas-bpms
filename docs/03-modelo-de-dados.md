@@ -194,6 +194,16 @@ Rodados em Postgres 16 local, com `auth.uid()` e os papéis do Supabase simulado
 - Testes: `supabase/testes/99_testes_0009.sql` (chave, listas, limite por IP, gravação, validações, permissões, complemento,
   aprovar/recusar, ligação pelo código, bucket).
 
+## Migração 0011 — criação da tarefa pela triagem (26/10/2026, fase 4)
+
+- `chamados`: `criacao_situacao` (criando → criada | erro), `criacao_mensagem` (erro ou avisos), `criacao_url`, `criacao_lista_id`,
+  `criacao_por`, `criacao_iniciada_em`, `criacao_concluida_em` (D65, D70). `chamados_anexos.enviado_na_origem_em` (D69).
+- Funções só da chave de serviço: `dados_criacao_tarefa`, `reservar_criacao_tarefa` (confere, aprova e trava 3 min),
+  `registrar_criacao_tarefa` (o id da tarefa nunca é apagado), `marcar_anexo_enviado`.
+- Gatilho `ligar_tarefa_ao_chamado`: código `CH-` no nome **ou** id igual a `tarefa_criada_id_externo`.
+- `vw_chamados` ganhou `lista_sugerida_id`, as colunas `criacao_*`, `criacao_lista_nome`, `criacao_por_nome` e `anexos_pendentes`.
+- Testes: `supabase/testes/99_testes_0011.sql`.
+
 ## Migração 0010 — portal do cliente (26/10/2026, fase 3)
 
 - `link_portal_valido(token)`: link ativo, dentro da validade, de cliente ativo.

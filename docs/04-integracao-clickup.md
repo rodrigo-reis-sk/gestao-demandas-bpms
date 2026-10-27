@@ -79,9 +79,27 @@ Reproduzir `criar_demanda_padrao()` do legado
 5. Criar a tarefa com Etapa e Módulo "Atendimento Avulso", Agenda "Remoto", Apontamento
    "OS Experience", Usuário cliente, Detalhamento, Parceiro, Origem, Período e responsável.
    Sem data → status `backlog base`.
-6. **Novo:** colocar o código da demanda no nome (`DEM-0042 · título`) e anexar os prints.
+6. **Novo:** colocar o código do chamado no nome (`CH-00042 - título`) e anexar os prints.
 7. Criar com o token **do gestor que clicou** (D11). Gravar `tarefa_criada_id_externo` no chamado. Quando a tarefa voltar pela sincronização, a
    regra 0 do agrupamento a liga à demanda.
+
+### Como foi implementado (fase 4, 26/10/2026 — D65–D70)
+
+- Tela: Triagem → **Aprovar e criar no ClickUp** (lista do cliente, vencimento e estimativa opcionais). Reserva: "Aprovar, crio à mão" (D66).
+- Edge Function `clickup-criar` (ações `criar` e `reenviar_prints`); regra em `_compartilhado/clickup-criacao.ts`:
+  1. banco (`reservar_criacao_tarefa`): confere gestor, chamado aberto, lista do cliente **marcada e ativa**, dev/consultor com usuário
+     do ClickUp; aprova e trava 3 min;
+  2. `GET /list/{id}/member` → quem não enxerga ganha "Apenas exibição" na pasta (`PATCH /api/v3/workspaces/{team}/folder/{id}/acls`);
+     falhou → não cria nada;
+  3. `GET /list/{id}/task` (até 10 páginas) → base `1-Atendimento (da) Base`; não achou → `POST` com status "em andamento" e Parceiro;
+  4. `GET /task/{base}?include_subtasks=true` → mês `AAAA-MM Mês` (do vencimento, ou de hoje no fuso MS); achou → `PUT` "em andamento"
+     e grava o Parceiro (legado); não achou → `POST` com `parent` = base;
+  5. `POST /list/{id}/task` com `name` `CH-xxxxx - Título`, `parent` = mês, `assignees` = dev + consultor, `markdown_description`,
+     campos (Etapa, Módulo, Agenda, Apontamento, Detalhamento, Usuário cliente, Parceiro, Origem), `status` "backlog base" sem data ou
+     `due_date` (meio-dia, sem horário), `time_estimate` em ms;
+  6. o id vai para o chamado na hora (`registrar_criacao_tarefa`); `GET /task` da base, do mês e da tarefa → `gravar_tarefas` → gatilho liga;
+  7. prints: `POST /task/{id}/attachment` (multipart, campo `attachment`), um por vez, em ordem; marcados em `chamados_anexos`.
+- Erro 401 com o token do gestor: a conta dele fica em "erro" e a tela pede para reconectar em Meu perfil.
 
 ## Descoberta e seleção de listas (P7 / D14)
 
