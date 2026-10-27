@@ -51,15 +51,20 @@ Roteiro de implantação: `docs/08-implantacao.md`. Telas: https://rodrigo-reis-
 - [~] **Painel de horas** por consultor × cliente × mês desde 01/01/2026 (`web/horas.html`, `vw_horas_mes`, D53), realizadas × agendadas × atrasadas — publicado; conferência **adiada em 26/10/2026**, segue em paralelo
 - Adiados em 26/10/2026 (fazer só se precisar): horas manuais por demanda (R4.2) e repositório/agrupamento para exceções (D37)
 
-## Fase 3 — Formulário do consultor, triagem e portal do cliente (decisões D54–D57, 26/10/2026)
+## Fase 3 — Formulário do consultor, triagem e portal do cliente (decisões D54–D61, 26/10/2026)
 Ordem (D56): primeiro formulário + triagem; depois o portal.
-- [ ] Edge Function `formulario`: valida a chave do link (D57), limite por IP, campo-armadilha, grava chamado + evidências + prints (bucket privado `evidencias`)
-- [ ] Migrar o protótipo (`referencia/prototipos/formulario-demandas.html`) para `web/formulario.html` (listas de clientes/consultores vindas da função)
-- [ ] Evidências em passos com prints em sequência; compressão das imagens; rascunho salvo no navegador (R5.4)
-- [ ] Tela de **triagem**: ver o chamado e os prints, escolher desenvolvedor, aprovar (criar no ClickUp à mão com `CH-xxxxx` no nome), recusar ou pedir informação (D54)
-- [ ] Sincronização liga a tarefa ao chamado pelo código `CH-xxxxx` no nome (D54)
-- [ ] Contador de chamados novos no menu "Triagem" (D55)
-- [ ] Portal do cliente com link exclusivo (`links_portal`): abrir chamado e acompanhar o status (D56)
+Legenda: `[~]` código pronto e testado localmente (`rodar.sh` + telas no navegador com o servidor simulado), falta publicar.
+- [~] Migração `0009_chamados.sql`: desenvolvedor + consultor + gerente no chamado (D58), status `aguardando_informacao` e `aprovado`,
+  link de complemento (D59), chave do formulário no Vault (D57), limite por IP (D60), bucket privado `evidencias`, `vw_chamados` + testes (`99_testes_0009.sql`)
+- [~] Edge Function `formulario`: valida a chave do link (D57), limite por IP, campo-armadilha, confere o tipo real dos arquivos, grava chamado + evidências + prints (bucket privado `evidencias`); testes em `formulario.test.ts`
+- [~] Protótipo migrado para `web/formulario.html` (listas de clientes/consultores/gerentes vindas da função; gerente sugerido pelo cliente; consultor lembrado no navegador)
+- [~] Evidências em passos com prints em sequência (escolher, arrastar ou Ctrl+V); compressão para ~300 KB; rascunho salvo no navegador com os prints (R5.4) — `web/assets/evidencias.js`
+- [~] Tela de **triagem** (`web/triagem.html`): ver o chamado e os prints (link temporário), escolher desenvolvedor e consultor, aprovar (nome `CH-xxxxx - Título` para copiar e lista sugerida), recusar com motivo, pedir informação (link para copiar), voltar para novo; link do formulário com "Trocar chave"
+- [~] **Complemento** (`web/complementar.html`, D59): o consultor responde e acrescenta passos; o chamado volta para "novo"
+- [~] Tarefa com `CH-xxxxx` no nome liga ao chamado: gatilho no banco, vale para a varredura e o webhook (D54, D61)
+- [~] Contador de chamados novos no menu "Triagem" e no Início (D55)
+- [ ] Publicar: `db push` (0009), `functions deploy formulario`, `git push`; roteiro e testes em `08-implantacao.md` §10
+- [ ] Portal do cliente com link exclusivo (`links_portal`): abrir chamado e acompanhar o status (D56) — reaproveita `evidencias.js` e a função `formulario`
 
 ## Fase 4 — Criar no ClickUp e relatórios
 - [ ] Edge Function `clickup-criar` com a regra do legado + código da demanda no nome + prints anexados

@@ -67,6 +67,8 @@ consumiu.
   **26/10/2026 (D54):** a opção (a) deixa de existir como demanda só no sistema; aprovar = criar a tarefa no
   ClickUp com o código `CH-xxxxx` no nome (à mão na fase 3, automático na fase 4).
 - R5.4 O rascunho do formulário não pode se perder se a pessoa fechar a tela.
+- R5.5 **(26/10/2026, D58–D60)** O chamado tem desenvolvedor (obrigatório) e consultor (opcional). "Pedir informação"
+  gera um link para o consultor complementar. Limite de 10 envios por hora por IP.
 
 ### R6 — Simplicidade e custo
 - Planos gratuitos (Supabase Free, hospedagem estática free).

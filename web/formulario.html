@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Nova demanda · Gestão BP-MS</title>
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700&display=swap">
+  <link rel="stylesheet" href="assets/estilo.css">
+  <script src="assets/tema.js"></script>
+  <script src="config.js"></script>
+</head>
+<body>
+<!-- Formulário do consultor (fase 3, R5.1). Link com chave: formulario.html?k=<chave> (D57).
+     Não tem login: envia pela Edge Function "formulario", que confere a chave e grava. -->
+<main class="estreito">
+  <h1>Nova demanda</h1>
+  <p class="sub">Abra aqui a demanda de desenvolvimento ou personalização. Ela entra na triagem da equipe BP-MS
+    com um código <b>CH-xxxxx</b>. O que você preencher fica salvo neste navegador até enviar.</p>
+
+  <div id="carregando" class="cartao suave">Carregando…</div>
+  <div id="bloqueio" class="cartao" hidden></div>
+
+  <div id="rascunho-aviso" class="cartao" hidden>
+    <span>Rascunho restaurado: você continua de onde parou.</span>
+    <button type="button" class="pequeno" id="descartar" style="margin-left:8px">Descartar rascunho</button>
+  </div>
+
+  <form id="f" novalidate hidden>
+    <div class="cartao">
+      <h2>Demanda</h2>
+      <div class="campos">
+        <div class="inteiro">
+          <label for="titulo">Título da demanda<span class="obrigatorio">*</span></label>
+          <input type="text" id="titulo" maxlength="140" placeholder="Ex.: Botão de ação para recalcular comissão no pedido de venda">
+        </div>
+        <div>
+          <label for="tipo">Tipo</label>
+          <select id="tipo">
+            <option>Personalização</option><option>Novo desenvolvimento</option><option>Ajuste / correção</option>
+            <option>Relatório</option><option>Integração</option><option>Dashboard</option>
+          </select>
+        </div>
+        <div>
+          <label for="prioridade">Prioridade</label>
+          <select id="prioridade">
+            <option value="baixa">Baixa</option><option value="media" selected>Média</option>
+            <option value="alta">Alta</option><option value="urgente">Urgente</option>
+          </select>
+        </div>
+        <div class="inteiro">
+          <label for="descricao">Descrição detalhada</label>
+          <textarea id="descricao" placeholder="Tela/rotina envolvida, regra de negócio esperada, comportamento atual × desejado…"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="cartao">
+      <h2>Cliente</h2>
+      <div class="campos">
+        <div class="inteiro">
+          <label for="cliente">Cliente<span class="obrigatorio">*</span></label>
+          <input type="text" id="cliente" list="lista-clientes" autocomplete="off" placeholder="Comece a digitar o nome">
+          <p class="dica" id="cliente-dica">Escolha da lista. Se o cliente não aparecer, digite o nome mesmo assim.</p>
+        </div>
+        <div>
+          <label for="contato">Contato do cliente</label>
+          <input type="text" id="contato" maxlength="200" placeholder="Nome do key user / responsável">
+        </div>
+        <div>
+          <label for="contato-info">E-mail ou telefone do contato</label>
+          <input type="text" id="contato-info" maxlength="200" placeholder="nome@cliente.com.br · (67) 9 9999-9999">
+        </div>
+      </div>
+    </div>
+
+    <div class="cartao">
+      <h2>Responsáveis</h2>
+      <div class="campos">
+        <div>
+          <label for="desenvolvedor">Desenvolvedor<span class="obrigatorio">*</span></label>
+          <select id="desenvolvedor"><option value="">Escolha…</option></select>
+          <p class="dica">Quem vai construir.</p>
+        </div>
+        <div>
+          <label for="consultor">Consultor</label>
+          <select id="consultor"><option value="">Nenhum</option></select>
+          <p class="dica">Quem levanta as informações, valida com o cliente e entrega (se houver).</p>
+        </div>
+        <div>
+          <label for="gerente">Gerente de projetos</label>
+          <select id="gerente"><option value="">—</option></select>
+          <p class="dica">Vem do cliente quando ele tem gerente.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="cartao">
+      <h2>Origem e chamado Sankhya</h2>
+      <div class="campos">
+        <div>
+          <label for="origem">Origem da demanda</label>
+          <select id="origem">
+            <option>Projeto de implantação</option><option>Sustentação / pós go-live</option>
+            <option>Solicitação direta do cliente</option><option>Comercial / proposta</option>
+            <option>Melhoria interna</option><option>Outra</option>
+          </select>
+        </div>
+        <div id="origem-outra-caixa" hidden>
+          <label for="origem-outra">Qual origem?</label>
+          <input type="text" id="origem-outra" maxlength="120">
+        </div>
+        <div class="inteiro">
+          <label id="rot-sankhya">Já abriu chamado na Sankhya?</label>
+          <span class="opcoes" role="radiogroup" aria-labelledby="rot-sankhya">
+            <label><input type="radio" name="sankhya" value="nao" checked>Não</label>
+            <label><input type="radio" name="sankhya" value="sim">Sim</label>
+          </span>
+        </div>
+        <div class="so-sankhya" hidden>
+          <label for="ticket">Número do chamado</label>
+          <input type="text" id="ticket" maxlength="60" placeholder="Ex.: 1234567">
+        </div>
+        <div class="so-sankhya" hidden>
+          <label for="retorno">Retorno da Sankhya</label>
+          <input type="text" id="retorno" maxlength="500" placeholder="Ex.: aguardando, recusado, fora de escopo…">
+        </div>
+      </div>
+    </div>
+
+    <div class="cartao">
+      <h2>Evidências</h2>
+      <p class="suave" style="margin-top:0">Documente passo a passo. Em cada passo, escreva o que acontece e anexe o print
+        logo abaixo: clique em “Adicionar print”, arraste a imagem para o passo ou cole com Ctrl+V no texto do passo.
+        As imagens são reduzidas antes de enviar.</p>
+      <div id="passos"></div>
+    </div>
+
+    <!-- campo-armadilha: pessoas não veem; robô preenche (D57) -->
+    <div class="armadilha" aria-hidden="true">
+      <label for="site">Site</label><input type="text" id="site" name="site" tabindex="-1" autocomplete="off">
+    </div>
+
+    <div class="rodape-form">
+      <span class="salvo" id="salvo"></span>
+      <span class="erro-texto" id="erro" hidden></span>
+      <button type="button" id="limpar">Limpar</button>
+      <button type="submit" class="primario" id="enviar">Registrar demanda</button>
+    </div>
+  </form>
+
+  <div id="pronto" class="cartao" hidden>
+    <h2>Demanda registrada</h2>
+    <p>Código <b id="pronto-codigo" class="numero" style="font-size:1.4rem"></b></p>
+    <p class="suave">A equipe BP-MS faz a triagem e cria a tarefa no ClickUp com esse código no nome.
+      Se faltar alguma informação, você recebe um link para complementar.</p>
+    <button type="button" class="primario" id="outra">Abrir outra demanda</button>
+  </div>
+</main>
+<datalist id="lista-clientes"></datalist>
+
+<script type="module">
+  import { $, aviso, consultar, enviar, criarEditorPassos, lerRascunho, gravarRascunho, montarTopoPublico } from "./assets/evidencias.js";
+
+  montarTopoPublico("Nova demanda");
+  const chave = new URLSearchParams(location.search).get("k") || "";
+  const RASCUNHO = "gestao-bpms-formulario-rascunho";
+  const ULTIMO_CONSULTOR = "gestao-bpms-formulario-consultor";
+  const CAMPOS = ["titulo", "tipo", "prioridade", "descricao", "cliente", "contato", "contato-info",
+                  "desenvolvedor", "consultor", "gerente", "origem", "origem-outra", "ticket", "retorno"];
+  let listas = { clientes: [], consultores: [], gerentes: [] };
+
+  function bloquear(msg) {
+    $("#carregando").hidden = true;
+    $("#bloqueio").hidden = false;
+    $("#bloqueio").innerHTML = `<h2>Formulário indisponível</h2><p></p>`;
+    $("#bloqueio p").textContent = msg;
+  }
+
+  // criado antes de carregar as listas (o rascunho restaura os passos dentro de montar)
+  const editor = criarEditorPassos($("#passos"), {
+    aoMudar: salvar, dicaPrimeiro: "Ex.: Acessar Portal de Vendas e abrir a nota de nº único 123456",
+  });
+
+
+  // ---------------------------------------------------------------- montar
+
+  function opcoes(sel, itens) { for (const i of itens) sel.append(new Option(i.nome, i.id)); }
+
+  async function montar() {
+    opcoes($("#desenvolvedor"), listas.consultores);
+    opcoes($("#consultor"), listas.consultores);
+    opcoes($("#gerente"), listas.gerentes);
+    $("#lista-clientes").innerHTML = "";
+    for (const c of listas.clientes) $("#lista-clientes").append(new Option(c.nome));
+    $("#carregando").hidden = true;
+    $("#f").hidden = false;
+
+    const r = lerRascunho(RASCUNHO);
+    if (r) {
+      for (const id of CAMPOS) if (r.v?.[id] != null) $("#" + id).value = r.v[id];
+      document.querySelector(`input[name=sankhya][value=${r.sankhya === "sim" ? "sim" : "nao"}]`).checked = true;
+      await editor.restaurar(r.passos);
+      $("#rascunho-aviso").hidden = false;
+    } else {
+      editor.desenhar();
+      try { $("#consultor").value = localStorage.getItem(ULTIMO_CONSULTOR) || ""; } catch { /* ignora */ }
+    }
+    condicionais();
+  }
+
+  // ---------------------------------------------------------------- campos que dependem de outros
+  function condicionais() {
+    const sim = document.querySelector("input[name=sankhya]:checked").value === "sim";
+    document.querySelectorAll(".so-sankhya").forEach((d) => (d.hidden = !sim));
+    $("#origem-outra-caixa").hidden = $("#origem").value !== "Outra";
+    const c = clienteEscolhido();
+    $("#cliente-dica").textContent = !$("#cliente").value.trim() || c
+      ? "Escolha da lista. Se o cliente não aparecer, digite o nome mesmo assim."
+      : "Cliente fora da lista: vai como texto e a equipe confere na triagem.";
+  }
+  const normal = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
+  function clienteEscolhido() {
+    const v = normal($("#cliente").value);
+    return v ? listas.clientes.find((c) => normal(c.nome) === v) : null;
+  }
+  document.querySelectorAll("input[name=sankhya]").forEach((r) => r.addEventListener("change", condicionais));
+  $("#origem").addEventListener("change", condicionais);
+  $("#cliente").addEventListener("change", () => {
+    const c = clienteEscolhido();
+    if (c) $("#cliente").value = c.nome;     // grafia do cadastro
+    if (c?.gerente_id && listas.gerentes.some((g) => g.id === c.gerente_id)) $("#gerente").value = c.gerente_id;
+    condicionais();
+  });
+
+  // ---------------------------------------------------------------- rascunho (R5.4)
+  let tempo;
+  function salvar() {
+    clearTimeout(tempo);
+    tempo = setTimeout(() => {
+      const v = Object.fromEntries(CAMPOS.map((id) => [id, $("#" + id).value]));
+      const vazio = !["titulo", "descricao", "cliente", "contato", "contato-info", "ticket", "retorno"].some((id) => v[id].trim())
+                    && editor.vazio();
+      gravarRascunho(RASCUNHO, vazio ? null : {
+        v, sankhya: document.querySelector("input[name=sankhya]:checked").value, passos: editor.estado(),
+      });
+      $("#salvo").textContent = vazio ? "" : "Rascunho salvo às " + new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      $("#enviar").disabled = editor.ocupado();
+      $("#enviar").textContent = editor.ocupado() ? "Preparando prints…" : "Registrar demanda";
+    }, 300);
+  }
+  $("#f").addEventListener("input", (ev) => { ev.target.classList?.remove("invalido"); salvar(); });
+  $("#f").addEventListener("change", salvar);
+
+  function limpar() {
+    $("#f").reset();
+    editor.limpar();
+    gravarRascunho(RASCUNHO, null);
+    $("#rascunho-aviso").hidden = true;
+    $("#erro").hidden = true;
+    $("#salvo").textContent = "";
+    try { $("#consultor").value = localStorage.getItem(ULTIMO_CONSULTOR) || ""; } catch { /* ignora */ }
+    condicionais();
+  }
+  $("#descartar").onclick = () => { limpar(); aviso("Rascunho descartado."); };
+  $("#limpar").onclick = () => {
+    if (confirmarLimpar()) { limpar(); aviso("Formulário limpo."); }
+  };
+  // Sem caixa de diálogo do navegador: o 1º clique pede confirmação no próprio botão.
+  let armado = false;
+  function confirmarLimpar() {
+    if (armado) { armado = false; $("#limpar").textContent = "Limpar"; return true; }
+    armado = true;
+    $("#limpar").textContent = "Clique de novo para apagar tudo";
+    setTimeout(() => { armado = false; $("#limpar").textContent = "Limpar"; }, 4000);
+    return false;
+  }
+
+  // ---------------------------------------------------------------- envio
+  $("#f").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    if (editor.ocupado()) return;
+    const faltando = ["titulo", "cliente", "desenvolvedor"].filter((id) => !$("#" + id).value.trim());
+    faltando.forEach((id) => $("#" + id).classList.add("invalido"));
+    if (faltando.length) {
+      $("#erro").textContent = "Preencha: " + faltando.map((id) => ({ titulo: "título", cliente: "cliente", desenvolvedor: "desenvolvedor" }[id])).join(", ") + ".";
+      $("#erro").hidden = false;
+      $("#" + faltando[0]).focus();
+      return;
+    }
+    $("#erro").hidden = true;
+    const botao = $("#enviar");
+    botao.disabled = true;
+    botao.textContent = "Enviando…";
+    try {
+      const c = clienteEscolhido();
+      const sankhya = document.querySelector("input[name=sankhya]:checked").value === "sim";
+      const form = new FormData();
+      const dados = {
+        titulo: $("#titulo").value, tipo: $("#tipo").value, prioridade: $("#prioridade").value,
+        descricao: $("#descricao").value,
+        cliente_id: c?.id || null, cliente_informado: c ? null : $("#cliente").value,
+        contato_nome: $("#contato").value, contato_info: $("#contato-info").value,
+        desenvolvedor_id: $("#desenvolvedor").value || null, consultor_id: $("#consultor").value || null,
+        gerente_projetos_id: $("#gerente").value || null,
+        origem_solicitacao: $("#origem").value === "Outra" && $("#origem-outra").value.trim()
+          ? "Outra: " + $("#origem-outra").value.trim() : $("#origem").value,
+        chamado_sankhya_aberto: sankhya,
+        ticket_sankhya: sankhya ? $("#ticket").value : null, retorno_sankhya: sankhya ? $("#retorno").value : null,
+        evidencias: editor.montarEnvio(form),
+      };
+      form.append("acao", "abrir");
+      form.append("chave", chave);
+      form.append("site", $("#site").value);
+      form.append("dados", JSON.stringify(dados));
+      const r = await enviar(form);
+      try { localStorage.setItem(ULTIMO_CONSULTOR, $("#consultor").value); } catch { /* ignora */ }
+      limpar();
+      $("#f").hidden = true;
+      $("#pronto").hidden = false;
+      $("#pronto-codigo").textContent = r.codigo || "registrado";
+      window.scrollTo({ top: 0 });
+    } catch (e) {
+      $("#erro").textContent = "Não foi possível registrar: " + e.message + " O rascunho continua guardado.";
+      $("#erro").hidden = false;
+    } finally {
+      botao.disabled = false;
+      botao.textContent = "Registrar demanda";
+    }
+  });
+
+  $("#outra").onclick = () => { $("#pronto").hidden = true; $("#f").hidden = false; window.scrollTo({ top: 0 }); };
+
+  // ---------------------------------------------------------------- início (no fim: tudo acima já está definido)
+  if (!chave) bloquear("O link está incompleto. Peça ao gestor o link do formulário de demandas.");
+  else {
+    try {
+      listas = await consultar({ acao: "dados", chave });
+      await montar();
+    } catch (e) { bloquear(e.message); }
+  }
+</script>
+</body>
+</html>

@@ -68,8 +68,9 @@ clientes ──< clientes_faps (listas)  ───────┘ fap_id        
 ### Chamados
 | Tabela | Para quê | Pontos importantes |
 |---|---|---|
-| `chamados` | Formulário do consultor, portal do cliente, interno | Código `CH-00001`. `status`: novo, em_triagem, direcionado, tarefa_criada, recusado, concluido. `tarefa_criada_id_externo` liga à tarefa criada |
-| `chamados_evidencias` | Passo a passo | `ordem` garante a sequência |
+| `chamados` | Formulário do consultor, portal do cliente, interno | Código `CH-00001`. `status` (0009): novo, aguardando_informacao, aprovado, tarefa_criada, recusado, concluido (em_triagem e direcionado só por compatibilidade). `desenvolvedor_id` (obrigatório) e `consultor_id` (opcional, D58), `gerente_projetos_id`. `tarefa_id` / `tarefa_criada_id_externo` ligam à tarefa com o código no nome (gatilho, D61). Pedido de informação: `informacao_pedida`, `token_complemento` (link, D59), `complementado_em` |
+| `chamados_evidencias` | Passo a passo | `ordem` garante a sequência; `etapa` = abertura ou complemento (0009) |
+| `envios_por_ip` | Limite do formulário externo (D60) | Uma linha por envio; só a última hora conta; limpa sozinha depois de 2 dias |
 | `chamados_anexos` | Prints de cada passo | Arquivo no bucket privado `evidencias` |
 | `links_portal` | Link exclusivo por cliente (P8) | Token aleatório na URL, pode ser desativado ou expirar |
 
@@ -81,6 +82,7 @@ clientes ──< clientes_faps (listas)  ───────┘ fap_id        
 | `vw_horas_manuais_por_demanda` | Minutos informados pelo gestor por demanda e consultor |
 | `vw_horas_demanda` | Totais da demanda: registradas × manuais × estimadas |
 | `vw_kanban_cards` | Tudo o que o card precisa em uma consulta |
+| `vw_chamados` | Tela de triagem (0009) | Chamado com nomes de cliente, dev, consultor, gerente, quem triou, tarefa ligada, lista sugerida e contagem de passos/prints |
 | `vw_pendencias_gestor` | Contadores do menu: listas a analisar, tarefas pendentes, "BPMS" em FAP sem pessoa definida, chamados novos |
 
 ## Funções
@@ -179,3 +181,15 @@ Rodados em Postgres 16 local, com `auth.uid()` e os papéis do Supabase simulado
   Nas views, agenda "agendada" com data anterior a hoje aparece como **`atrasada`** (D51) e soma em `minutos_atrasados`.
   Estrutura dentro de demanda real é transparente para a hierarquia (D49).
 - `minutos_do_periodo` desconta o almoço (12h-14h) quando o período cobre o almoço inteiro.
+
+## Migração 0009 — chamados (26/10/2026, fase 3)
+
+- Formulário (só a chave de serviço chama, pela Edge Function `formulario`): `conferir_chave_formulario`, `registrar_envio_ip`,
+  `dados_formulario` (clientes com lista marcada, consultores marcados, gerentes), `gravar_chamado`, `gravar_evidencias`,
+  `dados_complemento`, `gravar_complemento`.
+- Triagem (gestor logado): `chave_formulario(p_trocar)` devolve (ou troca) a chave do link; `triar_chamado(id, acao, texto,
+  desenvolvedor, consultor)` com as ações aprovar, responsaveis, recusar, pedir_informacao e reabrir.
+- Gatilho `trg_tarefas_liga_chamado` em `tarefas` (D61). Chave `chave_formulario` no Vault. Bucket privado `evidencias`
+  (5 MB por arquivo, imagens e PDF) com leitura só para gestor.
+- Testes: `supabase/testes/99_testes_0009.sql` (chave, listas, limite por IP, gravação, validações, permissões, complemento,
+  aprovar/recusar, ligação pelo código, bucket).

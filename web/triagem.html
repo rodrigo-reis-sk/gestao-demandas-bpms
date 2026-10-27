@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Triagem · Gestão BP-MS</title>
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700&display=swap">
+  <link rel="stylesheet" href="assets/estilo.css">
+  <script src="assets/tema.js"></script>
+  <script src="config.js"></script>
+</head>
+<body>
+<main>
+  <h1>Triagem</h1>
+  <p class="sub">Chamados abertos pelo formulário. Aprovar = escolher o desenvolvedor (e o consultor) e criar a tarefa
+    no ClickUp à mão com o código no nome (ex.: <code>CH-00012 - Ajuste DANFE</code>). A sincronização reconhece o código
+    e liga a tarefa ao chamado (D54).</p>
+
+  <div class="cartao">
+    <h2>Link do formulário</h2>
+    <p class="suave" style="margin-top:0">Mande este link para a equipe. Quem tem o link abre demandas sem login. Se ele vazar,
+      troque a chave: o link antigo para de funcionar na hora.</p>
+    <div class="copiar"><input type="text" id="link-form" readonly aria-label="Link do formulário" value="Carregando…">
+      <button type="button" id="copiar-form">Copiar</button>
+      <button type="button" id="trocar-form" title="Gera um link novo e desliga o antigo">Trocar chave</button></div>
+  </div>
+
+  <div class="filtros">
+    <select id="f-status" aria-label="Situação">
+      <option value="abertos">Abertos (novos, aguardando, aprovados)</option>
+      <option value="novo">Novos</option>
+      <option value="aguardando_informacao">Aguardando informação</option>
+      <option value="aprovado">Aprovados (falta a tarefa)</option>
+      <option value="tarefa_criada">Com tarefa no ClickUp</option>
+      <option value="recusado">Recusados</option>
+      <option value="todos">Todos</option>
+    </select>
+    <input type="text" id="f-busca" placeholder="Buscar por código, título, cliente, desenvolvedor…" aria-label="Buscar">
+    <select id="f-ordem" aria-label="Ordenar">
+      <option value="recentes">Mais recentes primeiro</option>
+      <option value="antigos">Mais antigos primeiro</option>
+      <option value="prioridade">Prioridade</option>
+    </select>
+    <button type="button" id="recarregar">↻ Atualizar</button>
+  </div>
+  <p class="suave" id="resumo"></p>
+  <div id="lista"><p class="suave">Carregando…</p></div>
+</main>
+
+<script type="module">
+  import { sb, esc, $, exigirLogin, montarMenu, atualizarContadores, aviso, dataHora, haQuanto } from "./assets/comum.js";
+
+  const { usuario } = await exigirLogin();
+  await montarMenu(usuario);
+
+  const ROTULOS = {
+    novo: ["Novo", "novo"], aguardando_informacao: ["Aguardando informação", "alerta"],
+    aprovado: ["Aprovado · falta a tarefa", "alerta"], tarefa_criada: ["Tarefa criada", "ok"],
+    recusado: ["Recusado", "erro"], concluido: ["Concluído", "ok"], em_triagem: ["Em triagem", ""], direcionado: ["Direcionado", ""],
+  };
+  const PRIORIDADE = { urgente: 0, alta: 1, media: 2, baixa: 3 };
+  const NOME_PRIORIDADE = { urgente: "Urgente", alta: "Alta", media: "Média", baixa: "Baixa" };
+  const ABERTOS = ["novo", "aguardando_informacao", "aprovado", "em_triagem"];
+  const FILTRO = "gestao-bpms-triagem-filtro";
+
+  let chamados = [];
+  let consultores = [];
+  const abertos = new Set();            // cartões abertos (mantém aberto ao redesenhar)
+
+  try { const f = JSON.parse(localStorage.getItem(FILTRO) || "{}"); if (f.status) $("#f-status").value = f.status; if (f.ordem) $("#f-ordem").value = f.ordem; } catch { /* ignora */ }
+
+  // ---------------------------------------------------------------- link do formulário (D57)
+  async function mostrarLink(trocar = false) {
+    const { data, error } = await sb.rpc("chave_formulario", { p_trocar: trocar });
+    if (error) { $("#link-form").value = "Erro: " + error.message; return; }
+    $("#link-form").value = new URL("formulario.html?k=" + encodeURIComponent(data), location.href).href;
+  }
+  async function copiar(texto, msg = "Copiado.") {
+    try { await navigator.clipboard.writeText(texto); aviso(msg, "ok"); }
+    catch { aviso("Não deu para copiar sozinho: selecione o texto e use Ctrl+C.", "erro"); }
+  }
+  $("#copiar-form").onclick = () => copiar($("#link-form").value, "Link do formulário copiado.");
+  let trocaArmada = false;
+  $("#trocar-form").onclick = async () => {
+    if (!trocaArmada) {
+      trocaArmada = true; $("#trocar-form").textContent = "Confirmar troca?";
+      setTimeout(() => { trocaArmada = false; $("#trocar-form").textContent = "Trocar chave"; }, 4000);
+      return;
+    }
+    trocaArmada = false; $("#trocar-form").textContent = "Trocar chave";
+    await mostrarLink(true);
+    aviso("Chave trocada. Mande o link novo para a equipe.", "ok");
+  };
+  mostrarLink();
+
+  // ---------------------------------------------------------------- dados
+  async function carregar() {
+    const [ch, co] = await Promise.all([
+      sb.from("vw_chamados").select("*").order("criado_em", { ascending: false }).limit(500),
+      sb.from("consultores").select("id, nome").eq("ativo", true).eq("sincronizar", true).order("nome"),
+    ]);
+    if (ch.error) { $("#lista").innerHTML = `<p class="erro-texto">${esc(ch.error.message)}</p>`; return; }
+    chamados = ch.data || [];
+    consultores = co.data || [];
+    desenhar();
+    atualizarContadores();
+  }
+
+  function filtrados() {
+    const st = $("#f-status").value;
+    const busca = $("#f-busca").value.trim().toLowerCase();
+    let l = chamados.filter((c) => st === "todos" || (st === "abertos" ? ABERTOS.includes(c.status) : c.status === st));
+    if (busca) l = l.filter((c) => [c.codigo, c.titulo, c.cliente_nome, c.desenvolvedor_nome, c.consultor_nome, c.ticket_sankhya]
+      .some((v) => String(v || "").toLowerCase().includes(busca)));
+    const ord = $("#f-ordem").value;
+    return [...l].sort((a, b) => ord === "antigos" ? a.criado_em.localeCompare(b.criado_em)
+      : ord === "prioridade" ? (PRIORIDADE[a.prioridade] - PRIORIDADE[b.prioridade]) || b.criado_em.localeCompare(a.criado_em)
+      : b.criado_em.localeCompare(a.criado_em));
+  }
+
+  // ---------------------------------------------------------------- desenho
+  function selo(st) { const [n, c] = ROTULOS[st] || [st, ""]; return `<span class="selo ${c}">${esc(n)}</span>`; }
+  function opcoesConsultor(atual, vazio) {
+    const lista = [...consultores];
+    if (atual && !lista.some((c) => c.id === atual.id)) lista.unshift(atual);   // pessoa desmarcada continua visível
+    return `<option value="">${vazio}</option>` + lista.map((c) =>
+      `<option value="${c.id}" ${atual?.id === c.id ? "selected" : ""}>${esc(c.nome)}</option>`).join("");
+  }
+  const nomeTarefa = (c) => `${c.codigo} - ${c.titulo}`;
+  const linkComplemento = (c) => new URL("complementar.html?c=" + encodeURIComponent(c.token_complemento), location.href).href;
+
+  function desenhar() {
+    const l = filtrados();
+    const novos = chamados.filter((c) => c.status === "novo").length;
+    $("#resumo").textContent = `${l.length} chamado(s) na lista · ${novos} novo(s) para triar`;
+    try { localStorage.setItem(FILTRO, JSON.stringify({ status: $("#f-status").value, ordem: $("#f-ordem").value })); } catch { /* ignora */ }
+    if (!l.length) { $("#lista").innerHTML = `<div class="cartao suave">Nenhum chamado nesta situação.</div>`; return; }
+    $("#lista").innerHTML = l.map(cartao).join("");
+    for (const id of abertos) {
+      const d = document.querySelector(`details[data-id="${id}"]`);
+      if (d) { d.open = true; carregarEvidencias(d); }
+    }
+  }
+
+  function cartao(c) {
+    const dev = c.desenvolvedor_id ? { id: c.desenvolvedor_id, nome: c.desenvolvedor_nome } : null;
+    const con = c.consultor_id ? { id: c.consultor_id, nome: c.consultor_nome } : null;
+    const fechado = ["tarefa_criada", "concluido"].includes(c.status);
+    return `<details class="chamado" data-id="${c.id}">
+      <summary>
+        <span><span class="codigo">${esc(c.codigo)}</span> · <span class="titulo">${esc(c.titulo)}</span></span>
+        <span>${selo(c.status)}</span>
+        <span class="meta"><span><b>${esc(c.cliente_nome || "—")}</b>${c.cliente_digitado ? ' <span class="selo alerta" title="Digitado: confira o cliente">fora da lista</span>' : ""}</span>
+          <span>Dev: <b>${esc(c.desenvolvedor_nome || "—")}</b></span>
+          ${c.consultor_nome ? `<span>Consultor: <b>${esc(c.consultor_nome)}</b></span>` : ""}
+          <span>Prioridade: <b>${esc(NOME_PRIORIDADE[c.prioridade] || c.prioridade)}</b></span>
+          <span>${c.passos} passo(s), ${c.anexos} print(s)</span>
+          <span title="${esc(dataHora(c.criado_em))}">${esc(haQuanto(c.criado_em))}</span></span>
+      </summary>
+      <div class="corpo">
+        <dl>
+          <div><dt>Tipo</dt><dd>${esc(c.tipo || "—")}</dd></div>
+          <div><dt>Origem</dt><dd>${esc(c.origem_solicitacao || "—")}</dd></div>
+          <div><dt>Contato do cliente</dt><dd>${esc([c.contato_nome, c.contato_info].filter(Boolean).join(" · ") || "—")}</dd></div>
+          <div><dt>Gerente de projetos</dt><dd>${esc(c.gerente_nome || "—")}</dd></div>
+          <div><dt>Chamado Sankhya</dt><dd>${c.chamado_sankhya_aberto ? esc(["Sim", c.ticket_sankhya, c.retorno_sankhya].filter(Boolean).join(" · ")) : "Não"}</dd></div>
+          <div><dt>Aberto em</dt><dd>${esc(dataHora(c.criado_em))}${c.complementado_em ? ` · complementado em ${esc(dataHora(c.complementado_em))}` : ""}</dd></div>
+          ${c.descricao ? `<div style="grid-column:1/-1"><dt>Descrição</dt><dd>${esc(c.descricao)}</dd></div>` : ""}
+        </dl>
+        <div><div class="secao">Evidências</div><div class="evidencias suave">Carregando…</div></div>
+        ${situacao(c)}
+        ${fechado ? "" : `
+        <div>
+          <div class="secao">Decisão</div>
+          <div class="decisao">
+            <div><label>Desenvolvedor</label><select data-campo="dev">${opcoesConsultor(dev, "Escolha…")}</select></div>
+            <div><label>Consultor (opcional)</label><select data-campo="con">${opcoesConsultor(con, "Nenhum")}</select></div>
+          </div>
+          <p class="acoes" style="margin-top:12px">
+            ${c.status !== "recusado" ? `<button type="button" class="primario" data-acao="${c.status === "aprovado" ? "responsaveis" : "aprovar"}">${c.status === "aprovado" ? "Salvar responsáveis" : "Aprovar"}</button>` : ""}
+            ${c.status !== "aprovado" && c.status !== "recusado" ? `<button type="button" data-acao="responsaveis">Salvar responsáveis</button>` : ""}
+            <button type="button" data-acao="abrir-pedir">Pedir informação</button>
+            ${c.status !== "recusado" ? `<button type="button" data-acao="abrir-recusar">Recusar</button>` : ""}
+            ${["recusado", "aguardando_informacao", "aprovado"].includes(c.status) ? `<button type="button" data-acao="reabrir">Voltar para novo</button>` : ""}
+          </p>
+          <div class="caixa-texto" hidden style="margin-top:10px">
+            <label class="rotulo-texto"></label>
+            <textarea data-campo="texto"></textarea>
+            <p class="acoes" style="margin-top:8px"><button type="button" class="primario" data-acao="confirmar"></button>
+              <button type="button" data-acao="cancelar">Cancelar</button></p>
+          </div>
+        </div>`}
+      </div>
+    </details>`;
+  }
+
+  // Bloco que muda conforme a situação: o que fazer no ClickUp, link do complemento, tarefa ligada, motivo da recusa.
+  function situacao(c) {
+    if (c.status === "aprovado") {
+      return `<div class="pergunta situacao"><b>Criar no ClickUp</b> — tarefa com este nome${c.lista_sugerida ? `, na lista <b>${esc(c.lista_sugerida)}</b>` : ""}:
+        <div class="copiar" style="margin:8px 0"><input type="text" readonly value="${esc(nomeTarefa(c))}" aria-label="Nome da tarefa">
+          <button type="button" data-copiar="${esc(nomeTarefa(c))}">Copiar nome</button></div>
+        Responsáveis: <b>${esc(c.desenvolvedor_nome || "—")}</b> (desenvolvedor)${c.consultor_nome ? ` e <b>${esc(c.consultor_nome)}</b> (consultor)` : ""}.
+        A ligação aparece aqui depois da próxima sincronização.</div>`;
+    }
+    if (c.status === "aguardando_informacao" && c.token_complemento) {
+      return `<div class="pergunta situacao"><b>Pedido em ${esc(dataHora(c.informacao_pedida_em))}:</b> ${esc(c.informacao_pedida)}
+        <div class="copiar" style="margin-top:8px"><input type="text" readonly value="${esc(linkComplemento(c))}" aria-label="Link do complemento">
+          <button type="button" data-copiar="${esc(linkComplemento(c))}">Copiar link</button></div>
+        <span class="suave">Mande para ${esc(c.consultor_nome || "o consultor")}. Quando ele enviar, o chamado volta para “Novo”.</span></div>`;
+    }
+    if (c.status === "tarefa_criada") {
+      return `<div class="pergunta situacao"><b>Tarefa ligada</b> ${c.tarefa_ligada_em ? "em " + esc(dataHora(c.tarefa_ligada_em)) : ""}:
+        ${c.tarefa_url ? `<a href="${esc(c.tarefa_url)}" target="_blank" rel="noopener">${esc(c.tarefa_nome || c.tarefa_criada_id_externo)}</a>` : esc(c.tarefa_nome || c.tarefa_criada_id_externo || "")}
+        ${c.tarefa_status ? ` · <span class="selo">${esc(c.tarefa_status)}</span>` : ""}</div>`;
+    }
+    if (c.status === "recusado") {
+      return `<div class="pergunta situacao"><b>Recusado${c.triado_por_nome ? " por " + esc(c.triado_por_nome) : ""}:</b> ${esc(c.decisao_observacao || "")}</div>`;
+    }
+    if (c.informacao_pedida && c.complementado_em) {
+      return `<div class="pergunta situacao"><b>Informação pedida:</b> ${esc(c.informacao_pedida)}<br><span class="suave">Respondida em ${esc(dataHora(c.complementado_em))} — veja os passos marcados como complemento.</span></div>`;
+    }
+    return "";
+  }
+
+  // ---------------------------------------------------------------- evidências com prints (link temporário)
+  async function carregarEvidencias(det) {
+    const lugar = $(".evidencias", det);
+    if (lugar.dataset.carregado) return;
+    lugar.dataset.carregado = "1";
+    const { data, error } = await sb.from("chamados_evidencias")
+      .select("id, ordem, texto, etapa, criado_em, chamados_anexos(ordem, caminho_storage, tipo_arquivo)")
+      .eq("chamado_id", det.dataset.id).order("ordem");
+    if (error) { lugar.textContent = error.message; return; }
+    if (!data.length) { lugar.textContent = "Nenhum passo enviado."; return; }
+    const caminhos = data.flatMap((e) => e.chamados_anexos.map((a) => a.caminho_storage));
+    const links = {};
+    if (caminhos.length) {
+      const r = await sb.storage.from("evidencias").createSignedUrls(caminhos, 3600);
+      for (const x of r.data || []) if (x.signedUrl) links[x.path] = x.signedUrl;
+    }
+    lugar.classList.remove("suave");
+    lugar.innerHTML = data.map((e) => {
+      const anexos = [...e.chamados_anexos].sort((a, b) => a.ordem - b.ordem).map((a) => {
+        const url = links[a.caminho_storage];
+        if (!url) return `<span class="suave">(print indisponível)</span>`;
+        return a.tipo_arquivo === "application/pdf"
+          ? `<a href="${esc(url)}" target="_blank" rel="noopener" style="padding:8px 12px">Abrir PDF</a>`
+          : `<a href="${esc(url)}" target="_blank" rel="noopener"><img src="${esc(url)}" alt="Print do passo ${e.ordem}" loading="lazy"></a>`;
+      }).join("");
+      return `<div class="evid"><span class="passo-n">Passo ${e.ordem}</span>
+        <p>${esc(e.texto || "")}${e.etapa === "complemento" ? ` <span class="selo">complemento · ${esc(dataHora(e.criado_em))}</span>` : ""}</p>
+        ${anexos ? `<div class="imgs">${anexos}</div>` : ""}</div>`;
+    }).join("");
+  }
+
+  // ---------------------------------------------------------------- ações
+  async function triar(det, acao, texto = null) {
+    const dev = $('select[data-campo="dev"]', det)?.value || null;
+    const con = $('select[data-campo="con"]', det)?.value || null;
+    if (acao === "aprovar" && !dev) { aviso("Escolha o desenvolvedor antes de aprovar.", "erro"); return; }
+    const { data, error } = await sb.rpc("triar_chamado", {
+      p_id: det.dataset.id, p_acao: acao, p_texto: texto, p_desenvolvedor: dev, p_consultor: con,
+    });
+    if (error) { aviso(error.message, "erro"); return; }
+    const msgs = { aprovar: "Aprovado. Agora crie a tarefa no ClickUp com o nome indicado.", recusar: "Chamado recusado.",
+                   pedir_informacao: "Pedido registrado. Copie o link e mande ao consultor.", reabrir: "Chamado voltou para novo.",
+                   responsaveis: "Responsáveis salvos." };
+    aviso(msgs[acao], "ok");
+    if (acao === "pedir_informacao" && data?.token_complemento) {
+      copiar(linkComplemento({ token_complemento: data.token_complemento }), "Pedido registrado e link do complemento copiado.");
+    }
+    await carregar();
+  }
+
+  $("#lista").addEventListener("toggle", (ev) => {
+    const det = ev.target;
+    if (!det.matches?.("details.chamado")) return;
+    if (det.open) { abertos.add(det.dataset.id); carregarEvidencias(det); } else abertos.delete(det.dataset.id);
+  }, true);
+
+  $("#lista").addEventListener("click", (ev) => {
+    const b = ev.target.closest("button");
+    if (!b) return;
+    if (b.dataset.copiar) { copiar(b.dataset.copiar); return; }
+    const det = b.closest("details.chamado");
+    const caixa = det && $(".caixa-texto", det);
+    const a = b.dataset.acao;
+    if (a === "abrir-pedir" || a === "abrir-recusar") {
+      caixa.hidden = false;
+      caixa.dataset.acao = a === "abrir-pedir" ? "pedir_informacao" : "recusar";
+      $(".rotulo-texto", caixa).textContent = a === "abrir-pedir" ? "O que falta? (o consultor vê este texto no link)" : "Motivo da recusa";
+      $('button[data-acao="confirmar"]', caixa).textContent = a === "abrir-pedir" ? "Pedir e copiar o link" : "Recusar chamado";
+      $("textarea", caixa).focus();
+    } else if (a === "cancelar") caixa.hidden = true;
+    else if (a === "confirmar") {
+      const texto = $("textarea", caixa).value.trim();
+      if (!texto) { aviso("Escreva o texto antes de confirmar.", "erro"); return; }
+      triar(det, caixa.dataset.acao, texto);
+    } else if (a) triar(det, a);
+  });
+
+  ["f-status", "f-ordem"].forEach((id) => $("#" + id).addEventListener("change", desenhar));
+  $("#f-busca").addEventListener("input", desenhar);
+  $("#recarregar").onclick = carregar;
+  await carregar();
+</script>
+</body>
+</html>

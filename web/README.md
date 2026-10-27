@@ -17,13 +17,16 @@ Configuração pública em `config.js` (URL do Supabase, chave anon e Client ID 
 | `perfil.html` | 1 | Gestor | Conectar a própria conta do ClickUp (OAuth ou token pessoal), escolher a conta da sincronização, registrar o webhook |
 | `repositorio.html` | 2 | Gestor | Tarefas pendentes e sugestões de agrupamento |
 | `demanda.html` | 2 | Gestor | Detalhe da demanda, tarefas, histórico, horas manuais |
-| `triagem.html` | 3 | Gestor | Chamados novos: direcionar ou enviar ao ClickUp |
+| `triagem.html` | 3 | Gestor | Chamados (D54, D58–D61): ver passos e prints, escolher dev/consultor, aprovar (nome `CH-xxxxx - Título` para criar no ClickUp), recusar, pedir informação (link do complemento); link do formulário com "Trocar chave". Contador no menu (D55) |
 | `cadastros.html` | 2 | Gestor | Clientes (cor), colunas do kanban, parâmetros |
-| `formulario.html` | 3 | Link aberto | Formulário de demanda do consultor |
+| `formulario.html` | 3 | Link com chave `?k=` (D57) | Formulário de demanda do consultor: passos com prints, compressão, rascunho no navegador |
+| `complementar.html` | 3 | Link exclusivo `?c=` (D59) | Consultor responde ao pedido de informação e acrescenta passos |
 | `portal.html` | 3 | Link exclusivo do cliente | Abrir e acompanhar chamados |
 
-Código comum: `assets/comum.js` (login, menu com contador de listas a analisar, chamadas às Edge
-Functions) e `assets/estilo.css`.
+Código comum: `assets/comum.js` (login, menu com contadores, chamadas às Edge Functions) e `assets/estilo.css`.
+Telas sem login (formulário, complemento e, depois, o portal): `assets/evidencias.js` — editor de passos com prints,
+compressão das imagens, rascunho (textos no localStorage, prints no IndexedDB) e envio à Edge Function `formulario`.
+Elas **não** usam `comum.js` nem gravam no banco direto.
 
 ## Identidade visual (D26)
 

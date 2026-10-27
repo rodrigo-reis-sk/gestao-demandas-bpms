@@ -119,6 +119,32 @@ contra o ClickUp fica na fase 2.
 - [ ] **Conta BPMS:** tarefa da conta "BPMS" na FAP 32222 (Soldamaq) aparece com o Cleber como responsável.
 - [ ] **Rotina:** o Log mostra varreduras a cada 20 min, sem erro, por 2–3 dias.
 
+## 10. Fase 3 — formulário do consultor e triagem (26/10/2026)
+
+```powershell
+npx supabase@latest db push                                   # aplica a 0009_chamados.sql
+npx supabase@latest functions deploy formulario --use-api     # publica a função nova
+git push                                                      # publica formulario, complementar e triagem no Pages
+```
+
+Conferir no painel: bucket **evidencias** em *Storage* (privado) e a chave `chave_formulario` em *Vault*.
+Se o `db push` recusar a política em `storage.objects`, rode o trecho "7. Bucket privado" da 0009 no SQL Editor.
+
+Testes (marcar ao conferir):
+
+- [ ] **Link:** Triagem → *Link do formulário* → abrir numa aba anônima. Sem `?k=` ou com chave errada: "Formulário indisponível".
+- [ ] **Listas:** aparecem os clientes com lista marcada, os consultores marcados e os gerentes; escolher o cliente sugere o gerente.
+- [ ] **Rascunho:** preencher, colar um print (Ctrl+V), fechar a aba e abrir de novo → volta tudo, com o print.
+- [ ] **Envio:** registrar → aparece o código `CH-xxxxx`; o menu **Triagem** ganha o contador; os prints abrem na triagem.
+- [ ] **Pedir informação:** escrever a pergunta → o link é copiado; abrir o link, responder com um print → o chamado volta para "Novo"
+      com os passos marcados como *complemento*; abrir o link de novo → "não vale mais".
+- [ ] **Aprovar:** escolher dev e consultor → *Aprovar* → copiar o nome; criar a tarefa no ClickUp na lista sugerida com esse nome
+      → depois da sincronização (ou na hora, pelo webhook) o chamado fica "Tarefa criada" com o link da tarefa.
+- [ ] **Recusar:** exige motivo; *Voltar para novo* desfaz.
+- [ ] **Trocar chave:** o link antigo para de funcionar na hora.
+- [ ] **Limite:** o 11º envio na mesma hora, do mesmo endereço, recebe "Muitos envios seguidos".
+- [ ] **Prints grandes:** um envio com ~10 prints chega inteiro (se a função recusar pelo tamanho, baixar `max_total_kb` em `configuracoes.formulario`).
+
 ## Problemas comuns
 
 | Sintoma | O que fazer |
@@ -127,4 +153,6 @@ contra o ClickUp fica na fase 2.
 | Log: "O ClickUp recusou o token" | A conta da sincronização ficou em "erro": reconectar em Meu perfil |
 | Webhook não chega | Meu perfil → Ver situação. Se "failing"/"suspended", Registrar/refazer |
 | "Acesso não liberado" no login | Falta a linha em `usuarios_sistema` (passo 6) |
+| Formulário: "Link do formulário inválido" | A chave foi trocada: copie o link de novo na Triagem |
+| Triagem sem os prints | Conferir o bucket `evidencias` e a política `gestor_le_evidencias` em `storage.objects` |
 | Varredura não roda sozinha | `select * from cron.job;` e `select * from net._http_response order by created desc limit 5;` |

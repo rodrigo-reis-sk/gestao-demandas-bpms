@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Complementar chamado · Gestão BP-MS</title>
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700&display=swap">
+  <link rel="stylesheet" href="assets/estilo.css">
+  <script src="assets/tema.js"></script>
+  <script src="config.js"></script>
+</head>
+<body>
+<!-- Complemento de chamado (D59). Link exclusivo gerado na triagem: complementar.html?c=<token>.
+     Só acrescenta: o que já foi enviado não muda. Ao enviar, o chamado volta para a triagem e o link deixa de valer. -->
+<main class="estreito">
+  <h1>Complementar chamado</h1>
+  <div id="carregando" class="cartao suave">Carregando…</div>
+  <div id="bloqueio" class="cartao" hidden></div>
+
+  <form id="f" novalidate hidden>
+    <div class="cartao">
+      <p class="suave" style="margin:0 0 4px"><span id="codigo"></span> · <span id="cliente"></span></p>
+      <h2 id="titulo" style="margin-bottom:12px"></h2>
+      <div class="secao">O que a equipe precisa saber</div>
+      <div class="pergunta" id="pergunta"></div>
+      <details style="margin-top:12px"><summary>Ver o que já foi enviado</summary><div id="enviado"></div></details>
+    </div>
+
+    <div class="cartao">
+      <h2>Sua resposta</h2>
+      <label for="resposta">Resposta</label>
+      <textarea id="resposta" placeholder="Responda aqui. Se precisar mostrar algo, acrescente passos com prints logo abaixo."></textarea>
+      <h2 style="margin-top:18px">Novos passos (opcional)</h2>
+      <div id="passos"></div>
+    </div>
+
+    <div class="armadilha" aria-hidden="true">
+      <label for="site">Site</label><input type="text" id="site" tabindex="-1" autocomplete="off">
+    </div>
+
+    <div class="rodape-form">
+      <span class="salvo" id="salvo"></span>
+      <span class="erro-texto" id="erro" hidden></span>
+      <button type="submit" class="primario" id="enviar">Enviar complemento</button>
+    </div>
+  </form>
+
+  <div id="pronto" class="cartao" hidden>
+    <h2>Complemento enviado</h2>
+    <p>O chamado <b id="pronto-codigo"></b> voltou para a triagem com as suas informações. Obrigado!</p>
+  </div>
+</main>
+
+<script type="module">
+  import { $, esc, aviso, consultar, enviar, criarEditorPassos, lerRascunho, gravarRascunho, montarTopoPublico } from "./assets/evidencias.js";
+
+  montarTopoPublico("Complemento");
+  const token = new URLSearchParams(location.search).get("c") || "";
+  const RASCUNHO = "gestao-bpms-complemento-" + token.slice(0, 16);
+  let dados = null;
+
+  function bloquear(msg) {
+    $("#carregando").hidden = true;
+    $("#bloqueio").hidden = false;
+    $("#bloqueio").innerHTML = `<h2>Link indisponível</h2><p></p>`;
+    $("#bloqueio p").textContent = msg;
+  }
+
+  const editor = criarEditorPassos($("#passos"), { aoMudar: salvar });
+
+
+  async function montar() {
+    $("#codigo").textContent = dados.codigo;
+    $("#cliente").textContent = dados.cliente || "";
+    $("#titulo").textContent = dados.titulo;
+    $("#pergunta").textContent = dados.pergunta || "";
+    $("#enviado").innerHTML = (dados.evidencias || []).map((e) => `
+      <div class="evid"><span class="passo-n">Passo ${e.ordem}</span>
+        <p>${esc(e.texto || "")}${e.anexos ? ` <span class="suave">(${e.anexos} ${e.anexos > 1 ? "prints" : "print"})</span>` : ""}
+        ${e.etapa === "complemento" ? ` <span class="selo">complemento</span>` : ""}</p></div>`).join("")
+      || `<p class="suave">Nenhum passo enviado.</p>`;
+    $("#carregando").hidden = true;
+    $("#f").hidden = false;
+    const r = lerRascunho(RASCUNHO);
+    if (r) { $("#resposta").value = r.resposta || ""; await editor.restaurar(r.passos); }
+    else editor.desenhar();
+  }
+
+  let tempo;
+  function salvar() {
+    clearTimeout(tempo);
+    tempo = setTimeout(() => {
+      const vazio = !$("#resposta").value.trim() && editor.vazio();
+      gravarRascunho(RASCUNHO, vazio ? null : { resposta: $("#resposta").value, passos: editor.estado() });
+      $("#salvo").textContent = vazio ? "" : "Rascunho salvo às " + new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      $("#enviar").disabled = editor.ocupado();
+    }, 300);
+  }
+  $("#f").addEventListener("input", () => { $("#erro").hidden = true; salvar(); });
+
+  $("#f").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    if (editor.ocupado()) return;
+    if (!$("#resposta").value.trim() && editor.vazio()) {
+      $("#erro").textContent = "Escreva a resposta ou acrescente um passo.";
+      $("#erro").hidden = false;
+      return;
+    }
+    $("#erro").hidden = true;
+    const botao = $("#enviar");
+    botao.disabled = true;
+    botao.textContent = "Enviando…";
+    try {
+      const form = new FormData();
+      const evidencias = editor.montarEnvio(form);
+      form.append("acao", "complementar");
+      form.append("token", token);
+      form.append("site", $("#site").value);
+      form.append("dados", JSON.stringify({ resposta: $("#resposta").value, evidencias }));
+      const r = await enviar(form);
+      editor.limpar();
+      gravarRascunho(RASCUNHO, null);
+      $("#f").hidden = true;
+      $("#pronto").hidden = false;
+      $("#pronto-codigo").textContent = r.codigo || dados.codigo;
+    } catch (e) {
+      $("#erro").textContent = "Não foi possível enviar: " + e.message + " O rascunho continua guardado.";
+      $("#erro").hidden = false;
+      if (e.status === 410) aviso("Este chamado já foi respondido ou decidido.", "erro");
+    } finally {
+      botao.disabled = false;
+      botao.textContent = "Enviar complemento";
+    }
+  });
+
+  // início (no fim: tudo acima já está definido)
+  if (!token) bloquear("O link está incompleto. Peça o link de novo a quem pediu a informação.");
+  else {
+    try { dados = await consultar({ acao: "dados_complemento", token }); await montar(); }
+    catch (e) { bloquear(e.message); }
+  }
+</script>
+</body>
+</html>

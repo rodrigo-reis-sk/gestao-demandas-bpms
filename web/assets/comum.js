@@ -80,6 +80,7 @@ export async function sair() {
 const PAGINAS = [
   ["index.html", "Início"],
   ["demandas.html", "Demandas"],
+  ["triagem.html", "Triagem"],
   ["kanban.html", "Kanban"],
   ["horas.html", "Horas"],
   ["consultores.html", "Consultores"],
@@ -93,7 +94,7 @@ export function marcaHtml() {
     <span class="marca-nome">Demandas<small>BP-MS</small></span></a>`;
 }
 
-/** Monta o menu do topo, com o contador de listas a analisar e o seletor de tema. */
+/** Monta o menu do topo, com os contadores (listas a analisar, chamados novos) e o seletor de tema. */
 export async function montarMenu(usuario) {
   const atual = location.pathname.split("/").pop() || "index.html";
   const topo = document.createElement("nav");
@@ -117,6 +118,7 @@ export async function atualizarContadores() {
     if (qtd) link.insertAdjacentHTML("beforeend", `<span class="contador" title="${titulo}">${qtd > 999 ? "999+" : qtd}</span>`);
   };
   contador("demandas.html", data?.listas_a_analisar, "Listas do ClickUp a analisar");
+  contador("triagem.html", data?.chamados_novos, "Chamados novos para triar (D55)");
   return data;
 }
 

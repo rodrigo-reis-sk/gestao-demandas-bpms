@@ -2,6 +2,10 @@
 
 Leia este arquivo inteiro antes de qualquer trabalho neste projeto.
 
+> **IDIOMA: responda SEMPRE em português do Brasil** — toda mensagem, do começo ao fim, inclusive
+> frases curtas entre uma ação e outra ("vou ler o arquivo..."), perguntas, listas de tarefas,
+> comentários no código, commits e documentação. Nunca misturar inglês na conversa.
+
 ## Quem e para quê
 
 - Dono do projeto: **Rodrigo Reis** (rodrigo.reis@sankhya.com.br), gestor da equipe de
@@ -14,7 +18,10 @@ Leia este arquivo inteiro antes de qualquer trabalho neste projeto.
 
 - **Antes de desenvolver, entender e discutir.** Em pedido novo ou ambíguo: resumir o
   entendimento, propor opções e perguntar. Só codificar depois do "ok".
-- Responder em **português do Brasil**, direto e com linguagem de negócio.
+- **Sempre responder em português do Brasil**, direto e com linguagem de negócio — vale para
+  respostas, resumos, perguntas, listas de tarefas, comentários no código, mensagens de commit
+  e documentação. Mesmo que o pedido, um arquivo ou uma ferramenta venha em inglês, a resposta
+  é em português (termos técnicos sem tradução consagrada podem ficar em inglês).
 - Trabalhar **por fases** (ver `docs/06-fases.md`). Uma conversa por fase.
 - Ao final de cada fase: atualizar `docs/06-fases.md` (checklist), `docs/07-decisoes.md`
   e as pendências em `docs/01-escopo.md`.
@@ -96,6 +103,9 @@ atrasadas) — no ar e conferida. Kanban (`kanban.html`, D52) e painel de horas 
 conferência adiada (segue em paralelo). Fase 2 encerrada em 26/10/2026.
 Fase 3 decidida (D54–D57): formulário do consultor com link com chave + triagem (aprovar = criar no ClickUp à mão
 com `CH-xxxxx` no nome; a sincronização liga), contador no menu; portal do cliente na sequência.
+Fase 3, parte 1 **pronta e testada localmente** em 26/10/2026 (D58–D61), falta publicar (`08-implantacao.md` §10): migração 0009,
+Edge Function `formulario`, telas `formulario.html`, `complementar.html` e `triagem.html` (`assets/evidencias.js` = base das telas
+sem login, reaproveitada pelo portal). Próximo: portal do cliente (`links_portal`).
 
 ## Como mexer em algo de uma fase já entregue
 

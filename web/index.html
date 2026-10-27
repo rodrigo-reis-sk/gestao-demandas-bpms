@@ -42,6 +42,7 @@
     const { count: marcados } = await sb.from("consultores").select("id", { count: "exact", head: true }).eq("sincronizar", true);
     const { count: listasMarcadas } = await sb.from("clientes_faps").select("id", { count: "exact", head: true }).eq("situacao_sincronizacao", "sincronizar");
     const cartoes = [
+      ["Chamados novos", p.chamados_novos ?? 0, "triagem.html"],
       ["Listas a analisar", p.listas_a_analisar ?? 0, "demandas.html"],
       ["Listas sincronizando", listasMarcadas ?? 0, "demandas.html"],
       ["Consultores sincronizando", marcados ?? 0, "consultores.html"],
