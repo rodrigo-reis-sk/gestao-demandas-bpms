@@ -103,9 +103,10 @@ atrasadas) — no ar e conferida. Kanban (`kanban.html`, D52) e painel de horas 
 conferência adiada (segue em paralelo). Fase 2 encerrada em 26/10/2026.
 Fase 3 decidida (D54–D57): formulário do consultor com link com chave + triagem (aprovar = criar no ClickUp à mão
 com `CH-xxxxx` no nome; a sincronização liga), contador no menu; portal do cliente na sequência.
-Fase 3, parte 1 **pronta e testada localmente** em 26/10/2026 (D58–D61), falta publicar (`08-implantacao.md` §10): migração 0009,
-Edge Function `formulario`, telas `formulario.html`, `complementar.html` e `triagem.html` (`assets/evidencias.js` = base das telas
-sem login, reaproveitada pelo portal). Próximo: portal do cliente (`links_portal`).
+Fase 3, parte 1 **no ar** em 26/10/2026 (D58–D61, commit `ad97a51`): migração 0009, Edge Function `formulario`, telas
+`formulario.html`, `complementar.html` e `triagem.html` (`assets/evidencias.js` = base das telas sem login). Testes do §10 com o Rodrigo.
+Portal do cliente (D62–D64) **pronto e testado localmente** em 26/10/2026, falta publicar (`08-implantacao.md` §11): migração 0010,
+ações do portal na função `formulario`, `portal.html` e links do portal na Triagem.
 
 ## Como mexer em algo de uma fase já entregue
 

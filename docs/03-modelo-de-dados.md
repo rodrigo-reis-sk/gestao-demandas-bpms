@@ -72,7 +72,7 @@ clientes ──< clientes_faps (listas)  ───────┘ fap_id        
 | `chamados_evidencias` | Passo a passo | `ordem` garante a sequência; `etapa` = abertura ou complemento (0009) |
 | `envios_por_ip` | Limite do formulário externo (D60) | Uma linha por envio; só a última hora conta; limpa sozinha depois de 2 dias |
 | `chamados_anexos` | Prints de cada passo | Arquivo no bucket privado `evidencias` |
-| `links_portal` | Link exclusivo por cliente (P8) | Token aleatório na URL, pode ser desativado ou expirar |
+| `links_portal` | Link exclusivo por cliente (P8, D62) | Token aleatório na URL, pode ser desativado ou expirar; `ultimo_acesso_em` e `criado_por` (0010) |
 
 ## Views (consultas prontas)
 
@@ -193,3 +193,13 @@ Rodados em Postgres 16 local, com `auth.uid()` e os papéis do Supabase simulado
   (5 MB por arquivo, imagens e PDF) com leitura só para gestor.
 - Testes: `supabase/testes/99_testes_0009.sql` (chave, listas, limite por IP, gravação, validações, permissões, complemento,
   aprovar/recusar, ligação pelo código, bucket).
+
+## Migração 0010 — portal do cliente (26/10/2026, fase 3)
+
+- `link_portal_valido(token)`: link ativo, dentro da validade, de cliente ativo.
+- `situacao_para_cliente(status, canal, status da tarefa, tipo do status)`: recebido · informacao · atendimento · concluido · nao_aprovado (D63).
+- `dados_portal(token)`: nome do cliente e todos os chamados dele (D62), com motivo da recusa e, nos chamados do portal que aguardam
+  informação, a pergunta e o token do complemento (D64). Grava o último acesso.
+- `gravar_chamado_portal(token, dados, ip)`: chamado `portal_cliente` com cliente e link tirados do token (o navegador não escolhe o cliente).
+- `vw_chamados` ganhou `solicitante_nome`, `solicitante_email`, `link_portal_id`, `situacao_cliente`, `cliente_tem_portal`; nova `vw_links_portal`.
+- Testes: `supabase/testes/99_testes_0010.sql`.

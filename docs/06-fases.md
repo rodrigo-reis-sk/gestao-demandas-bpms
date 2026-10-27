@@ -63,8 +63,13 @@ Legenda: `[~]` código pronto e testado localmente (`rodar.sh` + telas no navega
 - [~] **Complemento** (`web/complementar.html`, D59): o consultor responde e acrescenta passos; o chamado volta para "novo"
 - [~] Tarefa com `CH-xxxxx` no nome liga ao chamado: gatilho no banco, vale para a varredura e o webhook (D54, D61)
 - [~] Contador de chamados novos no menu "Triagem" e no Início (D55)
-- [ ] Publicar: `db push` (0009), `functions deploy formulario`, `git push`; roteiro e testes em `08-implantacao.md` §10
-- [ ] Portal do cliente com link exclusivo (`links_portal`): abrir chamado e acompanhar o status (D56) — reaproveita `evidencias.js` e a função `formulario`
+- [x] Publicar: `db push` (0009), `functions deploy formulario`, `git push` — no ar em 26/10/2026 (commit `ad97a51`); testes do §10 em `08-implantacao.md` com o Rodrigo
+- [~] **Portal do cliente** (`web/portal.html?t=`, D62–D64): migração `0010_portal.sql` (link válido, situação simplificada, `dados_portal`,
+  `gravar_chamado_portal`, `vw_links_portal`) + testes `99_testes_0010.sql`; ações `portal` e `abrir_portal` na função `formulario`;
+  o cliente abre chamado com passos e prints e acompanha **todos** os chamados do cliente; responde pedido de informação no portal
+  (ou pelo link separado); vê o motivo da recusa
+- [~] Triagem: área **Links do portal dos clientes** (criar, copiar, desativar/reativar, validade, último acesso), filtro por origem e selo "portal"
+- [ ] Publicar o portal: `db push` (0010), `functions deploy formulario`, `git push` (`08-implantacao.md` §11)
 
 ## Fase 4 — Criar no ClickUp e relatórios
 - [ ] Edge Function `clickup-criar` com a regra do legado + código da demanda no nome + prints anexados

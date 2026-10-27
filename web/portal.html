@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Portal do cliente · BP-MS</title>
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700&display=swap">
+  <link rel="stylesheet" href="assets/estilo.css">
+  <script src="assets/tema.js"></script>
+  <script src="config.js"></script>
+</head>
+<body>
+<!-- Portal do cliente (D16, D56, D62–D64). Link exclusivo por cliente: portal.html?t=<token> (tabela links_portal).
+     Sem login: lê e grava pela Edge Function "formulario". -->
+<main class="estreito">
+  <h1 id="titulo-pagina">Portal do cliente</h1>
+  <p class="sub">Abra chamados para a equipe de desenvolvimento BP-MS e acompanhe o andamento.</p>
+
+  <div id="carregando" class="cartao suave">Carregando…</div>
+  <div id="bloqueio" class="cartao" hidden></div>
+
+  <div id="conteudo" hidden>
+    <div class="acoes" role="tablist" style="margin-bottom:14px">
+      <button type="button" role="tab" id="aba-lista" class="primario" aria-selected="true">Meus chamados</button>
+      <button type="button" role="tab" id="aba-novo" aria-selected="false">+ Abrir chamado</button>
+    </div>
+
+    <!-- ===== Acompanhar ===== -->
+    <section id="ver-lista">
+      <div class="filtros">
+        <select id="f-situacao" aria-label="Situação">
+          <option value="abertos">Em aberto</option>
+          <option value="todos">Todos</option>
+        </select>
+        <input type="text" id="f-busca" placeholder="Buscar por código ou título…" aria-label="Buscar">
+        <button type="button" id="recarregar">↻ Atualizar</button>
+      </div>
+      <p class="suave" id="resumo"></p>
+      <div id="lista"></div>
+    </section>
+
+    <!-- ===== Abrir chamado ===== -->
+    <section id="ver-novo" hidden>
+      <div id="rascunho-aviso" class="cartao" hidden>
+        <span>Rascunho restaurado: você continua de onde parou.</span>
+        <button type="button" class="pequeno" id="descartar" style="margin-left:8px">Descartar rascunho</button>
+      </div>
+      <form id="f" novalidate>
+        <div class="cartao">
+          <h2>O que você precisa</h2>
+          <div class="campos">
+            <div class="inteiro">
+              <label for="titulo">Título<span class="obrigatorio">*</span></label>
+              <input type="text" id="titulo" maxlength="140" placeholder="Ex.: Relatório de vendas não mostra as devoluções">
+            </div>
+            <div>
+              <label for="prioridade">Prioridade</label>
+              <select id="prioridade">
+                <option value="baixa">Baixa</option><option value="media" selected>Média</option>
+                <option value="alta">Alta</option><option value="urgente">Urgente (parou a operação)</option>
+              </select>
+            </div>
+            <div class="inteiro">
+              <label for="descricao">Descrição</label>
+              <textarea id="descricao" placeholder="Em que tela ou rotina, o que acontece hoje e o que deveria acontecer…"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="cartao">
+          <h2>Quem está pedindo</h2>
+          <div class="campos">
+            <div>
+              <label for="nome">Seu nome<span class="obrigatorio">*</span></label>
+              <input type="text" id="nome" maxlength="200" autocomplete="name">
+            </div>
+            <div>
+              <label for="contato">E-mail ou telefone<span class="obrigatorio">*</span></label>
+              <input type="text" id="contato" maxlength="200" autocomplete="email" placeholder="nome@empresa.com.br · (67) 9 9999-9999">
+            </div>
+          </div>
+        </div>
+
+        <div class="cartao">
+          <h2>Passo a passo (com prints)</h2>
+          <p class="suave" style="margin-top:0">Mostre como chegar no problema. Em cada passo, escreva o que fez e anexe o print:
+            clique em “Adicionar print”, arraste a imagem ou cole com Ctrl+V.</p>
+          <div id="passos"></div>
+        </div>
+
+        <div class="armadilha" aria-hidden="true">
+          <label for="site">Site</label><input type="text" id="site" tabindex="-1" autocomplete="off">
+        </div>
+
+        <div class="rodape-form">
+          <span class="salvo" id="salvo"></span>
+          <span class="erro-texto" id="erro" hidden></span>
+          <button type="submit" class="primario" id="enviar">Abrir chamado</button>
+        </div>
+      </form>
+    </section>
+  </div>
+</main>
+
+<script type="module">
+  import { $, esc, aviso, consultar, enviar, criarEditorPassos, lerRascunho, gravarRascunho, montarTopoPublico } from "./assets/evidencias.js";
+
+  montarTopoPublico("Portal do cliente");
+  const token = new URLSearchParams(location.search).get("t") || "";
+  const chaveLocal = token.slice(0, 16);
+  const RASCUNHO = "gestao-bpms-portal-rascunho-" + chaveLocal;
+  const QUEM = "gestao-bpms-portal-quem-" + chaveLocal;
+  let dados = { cliente: "", chamados: [] };
+
+  // Situação simplificada (D63): rótulo e cor do selo
+  const SITUACAO = {
+    recebido: ["Recebido", ""], informacao: ["Precisamos de informação", "alerta"],
+    atendimento: ["Em atendimento", "novo"], concluido: ["Concluído", "ok"], nao_aprovado: ["Não aprovado", "erro"],
+  };
+  const ABERTOS = ["recebido", "informacao", "atendimento"];
+  const PRIORIDADE = { baixa: "Baixa", media: "Média", alta: "Alta", urgente: "Urgente" };
+  const data = (v) => v ? new Date(v).toLocaleDateString("pt-BR", { timeZone: "America/Campo_Grande", day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
+
+  function bloquear(msg) {
+    $("#carregando").hidden = true;
+    $("#conteudo").hidden = true;
+    $("#bloqueio").hidden = false;
+    $("#bloqueio").innerHTML = `<h2>Portal indisponível</h2><p></p>`;
+    $("#bloqueio p").textContent = msg;
+  }
+
+  const editor = criarEditorPassos($("#passos"), { aoMudar: salvar, dicaPrimeiro: "Ex.: Abrir Comercial > Pedido de venda e escolher o pedido 1234" });
+
+  // ---------------------------------------------------------------- abas
+  function aba(qual) {
+    const novo = qual === "novo";
+    $("#ver-lista").hidden = novo; $("#ver-novo").hidden = !novo;
+    $("#aba-lista").setAttribute("aria-selected", !novo); $("#aba-novo").setAttribute("aria-selected", novo);
+    $("#aba-lista").classList.toggle("primario", !novo); $("#aba-novo").classList.toggle("primario", novo);
+  }
+  $("#aba-lista").onclick = () => aba("lista");
+  $("#aba-novo").onclick = () => aba("novo");
+
+  // ---------------------------------------------------------------- acompanhar
+  async function carregar() {
+    dados = await consultar({ acao: "portal", token });
+    $("#titulo-pagina").textContent = "Chamados · " + dados.cliente;
+    document.title = dados.cliente + " · Portal BP-MS";
+    desenhar();
+  }
+
+  function desenhar() {
+    const sit = $("#f-situacao").value;
+    const busca = $("#f-busca").value.trim().toLowerCase();
+    const lista = dados.chamados
+      .filter((c) => sit === "todos" || ABERTOS.includes(c.situacao))
+      .filter((c) => !busca || (c.codigo + " " + c.titulo).toLowerCase().includes(busca));
+    const pedem = dados.chamados.filter((c) => c.situacao === "informacao").length;
+    $("#resumo").innerHTML = `${lista.length} chamado(s) na lista` +
+      (pedem ? ` · <b>${pedem} esperando a sua resposta</b>` : "");
+    if (!lista.length) {
+      $("#lista").innerHTML = `<div class="cartao suave">${sit === "abertos" ? "Nenhum chamado em aberto." : "Nenhum chamado ainda."}
+        Para pedir algo, use “+ Abrir chamado”.</div>`;
+      return;
+    }
+    $("#lista").innerHTML = lista.map((c) => {
+      const [rot, cor] = SITUACAO[c.situacao] || [c.situacao, ""];
+      const responder = c.token_complemento
+        ? new URL(`complementar.html?c=${encodeURIComponent(c.token_complemento)}&p=${encodeURIComponent(token)}`, location.href).href : "";
+      return `<div class="cartao" style="padding:14px 16px">
+        <div style="display:flex;gap:10px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap">
+          <div><span class="suave" style="font-size:.8rem">${esc(c.codigo)}</span> · <b>${esc(c.titulo)}</b></div>
+          <span class="selo ${cor}">${esc(rot)}</span>
+        </div>
+        <div class="suave" style="font-size:.84rem;margin-top:4px">
+          Aberto em ${data(c.criado_em)}${c.solicitante ? " por " + esc(c.solicitante) : ""} ·
+          prioridade ${esc(PRIORIDADE[c.prioridade] || c.prioridade)} · ${c.passos} passo(s), ${c.prints} print(s)
+          ${c.atualizado_em ? ` · atualizado em ${data(c.atualizado_em)}` : ""}</div>
+        ${c.situacao === "informacao" ? `<div class="pergunta" style="margin-top:10px"><b>A equipe precisa saber:</b> ${esc(c.pergunta || "")}</div>
+          ${responder ? `<p style="margin:10px 0 0"><a class="botao primario" href="${esc(responder)}">Responder</a></p>` : ""}` : ""}
+        ${c.situacao === "nao_aprovado" && c.motivo ? `<div class="pergunta" style="margin-top:10px"><b>Motivo:</b> ${esc(c.motivo)}</div>` : ""}
+      </div>`;
+    }).join("");
+  }
+  $("#f-situacao").addEventListener("change", desenhar);
+  $("#f-busca").addEventListener("input", desenhar);
+  $("#recarregar").onclick = () => carregar().catch((e) => aviso(e.message, "erro"));
+
+  // ---------------------------------------------------------------- abrir chamado
+  const CAMPOS = ["titulo", "prioridade", "descricao", "nome", "contato"];
+  let tempo;
+  function salvar() {
+    clearTimeout(tempo);
+    tempo = setTimeout(() => {
+      const v = Object.fromEntries(CAMPOS.map((id) => [id, $("#" + id).value]));
+      const vazio = !v.titulo.trim() && !v.descricao.trim() && editor.vazio();
+      gravarRascunho(RASCUNHO, vazio ? null : { v, passos: editor.estado() });
+      $("#salvo").textContent = vazio ? "" : "Rascunho salvo às " + new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      $("#enviar").disabled = editor.ocupado();
+      $("#enviar").textContent = editor.ocupado() ? "Preparando prints…" : "Abrir chamado";
+    }, 300);
+  }
+  $("#f").addEventListener("input", (ev) => { ev.target.classList?.remove("invalido"); $("#erro").hidden = true; salvar(); });
+  $("#f").addEventListener("change", salvar);
+
+  function lembrarQuem() {
+    try { const q = JSON.parse(localStorage.getItem(QUEM) || "{}"); if (q.nome) $("#nome").value = q.nome; if (q.contato) $("#contato").value = q.contato; } catch { /* ignora */ }
+  }
+  function limpar() {
+    $("#f").reset();
+    editor.limpar();
+    gravarRascunho(RASCUNHO, null);
+    $("#rascunho-aviso").hidden = true;
+    $("#salvo").textContent = "";
+    lembrarQuem();
+  }
+  $("#descartar").onclick = () => { limpar(); aviso("Rascunho descartado."); };
+
+  $("#f").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    if (editor.ocupado()) return;
+    const faltando = ["titulo", "nome", "contato"].filter((id) => !$("#" + id).value.trim());
+    faltando.forEach((id) => $("#" + id).classList.add("invalido"));
+    if (faltando.length) {
+      $("#erro").textContent = "Preencha: " + faltando.map((id) => ({ titulo: "título", nome: "seu nome", contato: "e-mail ou telefone" }[id])).join(", ") + ".";
+      $("#erro").hidden = false;
+      $("#" + faltando[0]).focus();
+      return;
+    }
+    const botao = $("#enviar");
+    botao.disabled = true;
+    botao.textContent = "Enviando…";
+    try {
+      const form = new FormData();
+      const corpo = {
+        titulo: $("#titulo").value, prioridade: $("#prioridade").value, descricao: $("#descricao").value,
+        solicitante_nome: $("#nome").value, solicitante_email: $("#contato").value,
+        evidencias: editor.montarEnvio(form),
+      };
+      form.append("acao", "abrir_portal");
+      form.append("token", token);
+      form.append("site", $("#site").value);
+      form.append("dados", JSON.stringify(corpo));
+      const r = await enviar(form);
+      try { localStorage.setItem(QUEM, JSON.stringify({ nome: $("#nome").value, contato: $("#contato").value })); } catch { /* ignora */ }
+      limpar();
+      aviso(`Chamado ${r.codigo || ""} aberto. Acompanhe por aqui.`, "ok");
+      await carregar().catch(() => {});
+      $("#f-situacao").value = "abertos";
+      desenhar();
+      aba("lista");
+      window.scrollTo({ top: 0 });
+    } catch (e) {
+      $("#erro").textContent = "Não foi possível abrir: " + e.message + " O rascunho continua guardado.";
+      $("#erro").hidden = false;
+    } finally {
+      botao.disabled = false;
+      botao.textContent = "Abrir chamado";
+    }
+  });
+
+  // ---------------------------------------------------------------- início (no fim: tudo acima já está definido)
+  if (!token) bloquear("O link está incompleto. Peça o link do portal à equipe BP-MS.");
+  else {
+    try {
+      await carregar();
+      $("#carregando").hidden = true;
+      $("#conteudo").hidden = false;
+      const r = lerRascunho(RASCUNHO);
+      if (r) {
+        for (const id of CAMPOS) if (r.v?.[id] != null) $("#" + id).value = r.v[id];
+        await editor.restaurar(r.passos);
+        $("#rascunho-aviso").hidden = false;
+        aba("novo");
+      } else { editor.desenhar(); lembrarQuem(); }
+      if (location.hash === "#novo") aba("novo");
+    } catch (e) { bloquear(e.message); }
+  }
+</script>
+</body>
+</html>

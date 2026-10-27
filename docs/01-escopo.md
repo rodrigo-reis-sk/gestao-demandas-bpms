@@ -69,6 +69,8 @@ consumiu.
 - R5.4 O rascunho do formulário não pode se perder se a pessoa fechar a tela.
 - R5.5 **(26/10/2026, D58–D60)** O chamado tem desenvolvedor (obrigatório) e consultor (opcional). "Pedir informação"
   gera um link para o consultor complementar. Limite de 10 envios por hora por IP.
+- R5.6 **(26/10/2026, D62–D64)** Portal: o cliente vê todos os chamados dele em situação simplificada
+  (Recebido, Precisamos de informação, Em atendimento, Concluído, Não aprovado com motivo) e responde pedidos de informação no portal.
 
 ### R6 — Simplicidade e custo
 - Planos gratuitos (Supabase Free, hospedagem estática free).

@@ -145,6 +145,27 @@ Testes (marcar ao conferir):
 - [ ] **Limite:** o 11º envio na mesma hora, do mesmo endereço, recebe "Muitos envios seguidos".
 - [ ] **Prints grandes:** um envio com ~10 prints chega inteiro (se a função recusar pelo tamanho, baixar `max_total_kb` em `configuracoes.formulario`).
 
+## 11. Fase 3 — portal do cliente (26/10/2026)
+
+```powershell
+npx supabase@latest db push                                   # aplica a 0010_portal.sql
+npx supabase@latest functions deploy formulario --use-api     # função com as ações do portal
+git add CLAUDE.md docs supabase web
+git commit -m "Fase 3: portal do cliente (D62-D64)"
+git push
+```
+
+Testes (marcar ao conferir):
+
+- [ ] **Criar link:** Triagem → *Links do portal dos clientes* → escolher o cliente → *Criar link* (o link é copiado).
+- [ ] **Portal:** abrir o link numa aba anônima → aparece "Chamados · <cliente>" com os chamados já abertos pelos consultores.
+- [ ] **Abrir chamado:** *+ Abrir chamado* com um print colado → aparece na lista como *Recebido* e na Triagem com o selo **portal**.
+- [ ] **Pedir informação:** na Triagem, pedir informação no chamado do portal → no portal aparece *Precisamos de informação* →
+      *Responder* → enviar → *Voltar ao portal*: o chamado volta para *Recebido* e, na Triagem, para *Novo*.
+- [ ] **Andamento:** depois de aprovar e criar a tarefa no ClickUp com o código → *Em atendimento*; concluir a tarefa → *Concluído*.
+- [ ] **Recusa:** recusar com motivo → o portal mostra *Não aprovado* e o motivo.
+- [ ] **Desativar:** desativar o link → o portal mostra "Este link do portal não vale mais".
+
 ## Problemas comuns
 
 | Sintoma | O que fazer |

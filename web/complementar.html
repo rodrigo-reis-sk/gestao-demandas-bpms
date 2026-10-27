@@ -52,14 +52,21 @@
   <div id="pronto" class="cartao" hidden>
     <h2>Complemento enviado</h2>
     <p>O chamado <b id="pronto-codigo"></b> voltou para a triagem com as suas informações. Obrigado!</p>
+    <p id="voltar-portal" hidden><a class="botao primario" href="#">Voltar ao portal</a></p>
   </div>
 </main>
 
 <script type="module">
   import { $, esc, aviso, consultar, enviar, criarEditorPassos, lerRascunho, gravarRascunho, montarTopoPublico } from "./assets/evidencias.js";
 
-  montarTopoPublico("Complemento");
+  montarTopoPublico(new URLSearchParams(location.search).get("p") ? "Portal do cliente" : "Complemento");
   const token = new URLSearchParams(location.search).get("c") || "";
+  // vindo do portal do cliente (D64): ?p=<token do portal> mostra "Voltar ao portal"
+  const portal = new URLSearchParams(location.search).get("p") || "";
+  if (portal) {
+    $("#voltar-portal a").href = "portal.html?t=" + encodeURIComponent(portal);
+    $("#voltar-portal").hidden = false;
+  }
   const RASCUNHO = "gestao-bpms-complemento-" + token.slice(0, 16);
   let dados = null;
 

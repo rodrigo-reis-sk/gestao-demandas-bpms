@@ -6,6 +6,8 @@
 //   JSON      { acao: "dados_complemento", token }        → pergunta do gestor e o que já foi enviado
 //   FormData  acao=abrir, chave, dados (JSON), site, a0, a1...       → grava o chamado
 //   FormData  acao=complementar, token, dados (JSON), site, a0...    → acrescenta passos (D59)
+//   JSON      { acao: "portal", token }                   → portal do cliente: chamados do cliente (D62, D63)
+//   FormData  acao=abrir_portal, token, dados (JSON), site, a0...    → chamado aberto pelo cliente
 //
 // Proteções: chave do link (D57, Vault), campo-armadilha "site" (robô preenche → finge que gravou),
 // limite de 10 envios por hora por IP (D60), conferência do tipo real dos arquivos e dos tamanhos.
@@ -29,6 +31,7 @@ Deno.serve(async (req) => {
       const corpo = await req.json().catch(() => ({}));
       if (corpo.acao === "dados") return await dados(banco, corpo.chave);
       if (corpo.acao === "dados_complemento") return await dadosComplemento(banco, corpo.token);
+      if (corpo.acao === "portal") return await dadosPortal(banco, corpo.token);
       return responder(400, { erro: "Ação desconhecida." });
     }
     if (tipo.includes("multipart/form-data")) {
@@ -36,6 +39,7 @@ Deno.serve(async (req) => {
       const acao = String(form.get("acao") ?? "");
       if (acao === "abrir") return await abrir(req, banco, form);
       if (acao === "complementar") return await complementar(req, banco, form);
+      if (acao === "abrir_portal") return await abrirPortal(req, banco, form);
       return responder(400, { erro: "Ação desconhecida." });
     }
     return responder(400, { erro: "Formato não aceito." });
@@ -44,7 +48,7 @@ Deno.serve(async (req) => {
     console.error(e);
     // Erro de validação do banco ("Informe o título..."): 400 com a frase, sem o prefixo técnico
     const msg = mensagemDeErro(e);
-    if (/^Banco \((gravar_chamado|gravar_complemento)\): /.test(msg)) {
+    if (/^Banco \((gravar_chamado|gravar_complemento|gravar_chamado_portal)\): /.test(msg)) {
       return responder(400, { erro: msg.replace(/^Banco \([^)]*\): /, "") });
     }
     return responder(500, { erro: "Não foi possível registrar agora. Seu rascunho continua guardado; tente de novo em instantes." });
@@ -155,6 +159,35 @@ async function complementar(req: Request, banco: Banco, form: FormData): Promise
   try {
     const r = await rpc<{ codigo: string }>(banco, "gravar_complemento", {
       p_token: token, p_evidencias: evidencias, p_resposta: typeof dadosForm.resposta === "string" ? dadosForm.resposta : null,
+    });
+    return responder(200, { ok: true, codigo: r.codigo });
+  } catch (e) {
+    await apagar(banco, enviados);
+    throw e;
+  }
+}
+
+// ------------------------------------------------------------------ portal do cliente (D16, D62–D64)
+const LINK_PORTAL_INVALIDO = "Este link do portal não vale mais. Peça um link novo à equipe BP-MS.";
+
+async function dadosPortal(banco: Banco, token: unknown): Promise<Response> {
+  const d = typeof token === "string" && token ? await rpc(banco, "dados_portal", { p_token: token }) : null;
+  if (!d) return responder(410, { erro: LINK_PORTAL_INVALIDO });
+  return responder(200, d);
+}
+
+async function abrirPortal(req: Request, banco: Banco, form: FormData): Promise<Response> {
+  const token = String(form.get("token") ?? "");
+  const link = token ? await rpc<{ id: string | null } | null>(banco, "link_portal_valido", { p_token: token }) : null;
+  if (!link?.id) return responder(410, { erro: LINK_PORTAL_INVALIDO });
+  const { dadosForm, robo } = await conferirEnvio(req, banco, form, "portal");
+  if (robo) return responder(200, { ok: true, codigo: null });
+
+  const id = crypto.randomUUID();
+  const { evidencias, enviados } = await subirArquivos(banco, id, "", form, dadosForm.evidencias);
+  try {
+    const r = await rpc<{ codigo: string }>(banco, "gravar_chamado_portal", {
+      p_token: token, p_dados: { ...dadosForm, id, evidencias }, p_ip: ipDaRequisicao(req),
     });
     return responder(200, { ok: true, codigo: r.codigo });
   } catch (e) {

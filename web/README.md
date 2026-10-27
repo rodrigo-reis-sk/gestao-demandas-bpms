@@ -21,7 +21,7 @@ Configuração pública em `config.js` (URL do Supabase, chave anon e Client ID 
 | `cadastros.html` | 2 | Gestor | Clientes (cor), colunas do kanban, parâmetros |
 | `formulario.html` | 3 | Link com chave `?k=` (D57) | Formulário de demanda do consultor: passos com prints, compressão, rascunho no navegador |
 | `complementar.html` | 3 | Link exclusivo `?c=` (D59) | Consultor responde ao pedido de informação e acrescenta passos |
-| `portal.html` | 3 | Link exclusivo do cliente | Abrir e acompanhar chamados |
+| `portal.html` | 3 | Link exclusivo do cliente `?t=` (D62) | Cliente abre chamado (passos com prints) e acompanha todos os chamados dele em situação simplificada (D63); "Responder" leva ao complemento (D64). Links criados na Triagem |
 
 Código comum: `assets/comum.js` (login, menu com contadores, chamadas às Edge Functions) e `assets/estilo.css`.
 Telas sem login (formulário, complemento e, depois, o portal): `assets/evidencias.js` — editor de passos com prints,

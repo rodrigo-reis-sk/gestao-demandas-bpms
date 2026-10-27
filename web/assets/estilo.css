@@ -267,3 +267,7 @@ button.icone { width: 30px; height: 28px; padding: 0; font-size: .9rem; color: v
 .copiar input { flex: 1; font-variant-numeric: tabular-nums; }
 .selo.novo { color: var(--acento-forte); border-color: currentColor; font-weight: 600; }
 .pergunta.situacao { white-space: normal; }
+/* Links do portal na triagem */
+.campos.links { grid-template-columns: 2fr 2fr 1fr auto; align-items: end; }
+@media (max-width: 640px) { .campos.links { grid-template-columns: minmax(0, 1fr); } }
+details.cartao > summary { cursor: pointer; color: var(--texto); }

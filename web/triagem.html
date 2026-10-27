@@ -28,7 +28,25 @@
       <button type="button" id="trocar-form" title="Gera um link novo e desliga o antigo">Trocar chave</button></div>
   </div>
 
+  <details class="cartao" id="portal">
+    <summary><b>Links do portal dos clientes</b> <span class="suave" id="portal-resumo"></span></summary>
+    <p class="suave">Cada cliente acessa o portal por um link exclusivo, sem login: abre chamados e acompanha todos os chamados
+      dele (D62). Desative o link quando a pessoa sair do cliente ou se ele vazar.</p>
+    <div class="campos links">
+      <div><label for="pl-cliente">Cliente</label><select id="pl-cliente"><option value="">Escolha…</option></select></div>
+      <div><label for="pl-descricao">Para quem / observação</label><input type="text" id="pl-descricao" maxlength="120" placeholder="Ex.: key users do financeiro"></div>
+      <div><label for="pl-expira">Vale até (opcional)</label><input type="date" id="pl-expira"></div>
+      <div><button type="button" class="primario" id="pl-criar" style="margin-top:8px">Criar link</button></div>
+    </div>
+    <div class="tabela-rolagem" style="margin-top:14px"><table id="pl-tabela"></table></div>
+  </details>
+
   <div class="filtros">
+    <select id="f-canal" aria-label="Origem">
+      <option value="">Todas as origens</option>
+      <option value="formulario_consultor">Formulário do consultor</option>
+      <option value="portal_cliente">Portal do cliente</option>
+    </select>
     <select id="f-status" aria-label="Situação">
       <option value="abertos">Abertos (novos, aguardando, aprovados)</option>
       <option value="novo">Novos</option>
@@ -96,6 +114,58 @@
   };
   mostrarLink();
 
+  // ---------------------------------------------------------------- links do portal (D16, D62)
+  const linkPortal = (t) => new URL("portal.html?t=" + encodeURIComponent(t), location.href).href;
+  async function carregarLinks() {
+    const [ls, cs] = await Promise.all([
+      sb.from("vw_links_portal").select("*").order("cliente_nome"),
+      sb.from("clientes").select("id, nome").eq("ativo", true).order("nome"),
+    ]);
+    if (ls.error) { $("#pl-tabela").innerHTML = `<tr><td class="erro-texto">${esc(ls.error.message)}</td></tr>`; return; }
+    const sel = $("#pl-cliente"), atual = sel.value;
+    sel.innerHTML = `<option value="">Escolha…</option>` + (cs.data || []).map((c) => `<option value="${c.id}">${esc(c.nome)}</option>`).join("");
+    sel.value = atual;
+    const links = ls.data || [];
+    $("#portal-resumo").textContent = `· ${links.filter((l) => l.valendo).length} link(s) valendo`;
+    $("#pl-tabela").innerHTML = !links.length ? `<tr><td class="suave">Nenhum link criado ainda.</td></tr>` :
+      `<thead><tr><th>Cliente</th><th>Para quem</th><th>Situação</th><th>Último acesso</th><th class="num">Chamados</th><th></th></tr></thead><tbody>` +
+      links.map((l) => `<tr>
+        <td>${esc(l.cliente_nome)}</td><td>${esc(l.descricao || "—")}</td>
+        <td>${l.valendo ? '<span class="selo ok">valendo</span>' : !l.ativo ? '<span class="selo">desativado</span>' : '<span class="selo alerta">vencido</span>'}
+          ${l.expira_em ? `<span class="suave"> até ${esc(new Date(l.expira_em).toLocaleDateString("pt-BR"))}</span>` : ""}</td>
+        <td>${l.ultimo_acesso_em ? esc(haQuanto(l.ultimo_acesso_em)) : '<span class="suave">nunca</span>'}</td>
+        <td class="num">${l.chamados_abertos}</td>
+        <td class="acoes" style="justify-content:flex-end">
+          ${l.valendo ? `<button type="button" class="pequeno" data-copiar="${esc(linkPortal(l.token))}">Copiar link</button>` : ""}
+          <button type="button" class="pequeno" data-link="${l.id}" data-ativo="${l.ativo ? 0 : 1}">${l.ativo ? "Desativar" : "Reativar"}</button></td>
+      </tr>`).join("") + "</tbody>";
+  }
+  $("#pl-criar").onclick = async () => {
+    const cliente = $("#pl-cliente").value;
+    if (!cliente) { aviso("Escolha o cliente.", "erro"); return; }
+    const expira = $("#pl-expira").value ? new Date($("#pl-expira").value + "T23:59:59-04:00").toISOString() : null;
+    const { data, error } = await sb.from("links_portal")
+      .insert({ cliente_id: cliente, descricao: $("#pl-descricao").value.trim() || null, expira_em: expira })
+      .select("token").single();
+    if (error) { aviso(error.message, "erro"); return; }
+    $("#pl-descricao").value = ""; $("#pl-expira").value = "";
+    await carregarLinks();
+    copiar(linkPortal(data.token), "Link do portal criado e copiado.");
+  };
+  $("#pl-tabela").addEventListener("click", async (ev) => {
+    const b = ev.target.closest("button");
+    if (!b) return;
+    if (b.dataset.copiar) { copiar(b.dataset.copiar, "Link do portal copiado."); return; }
+    if (b.dataset.link) {
+      const { error } = await sb.from("links_portal").update({ ativo: b.dataset.ativo === "1" }).eq("id", b.dataset.link);
+      if (error) { aviso(error.message, "erro"); return; }
+      aviso(b.dataset.ativo === "1" ? "Link reativado." : "Link desativado: o portal deixa de abrir na hora.", "ok");
+      carregarLinks();
+    }
+  });
+  $("#portal").addEventListener("toggle", () => { if ($("#portal").open) carregarLinks(); });
+  carregarLinks();
+
   // ---------------------------------------------------------------- dados
   async function carregar() {
     const [ch, co] = await Promise.all([
@@ -112,8 +182,9 @@
   function filtrados() {
     const st = $("#f-status").value;
     const busca = $("#f-busca").value.trim().toLowerCase();
-    let l = chamados.filter((c) => st === "todos" || (st === "abertos" ? ABERTOS.includes(c.status) : c.status === st));
-    if (busca) l = l.filter((c) => [c.codigo, c.titulo, c.cliente_nome, c.desenvolvedor_nome, c.consultor_nome, c.ticket_sankhya]
+    const canal = $("#f-canal").value;
+    let l = chamados.filter((c) => !canal || c.canal === canal).filter((c) => st === "todos" || (st === "abertos" ? ABERTOS.includes(c.status) : c.status === st));
+    if (busca) l = l.filter((c) => [c.codigo, c.titulo, c.cliente_nome, c.desenvolvedor_nome, c.consultor_nome, c.ticket_sankhya, c.solicitante_nome]
       .some((v) => String(v || "").toLowerCase().includes(busca)));
     const ord = $("#f-ordem").value;
     return [...l].sort((a, b) => ord === "antigos" ? a.criado_em.localeCompare(b.criado_em)
@@ -149,11 +220,13 @@
     const dev = c.desenvolvedor_id ? { id: c.desenvolvedor_id, nome: c.desenvolvedor_nome } : null;
     const con = c.consultor_id ? { id: c.consultor_id, nome: c.consultor_nome } : null;
     const fechado = ["tarefa_criada", "concluido"].includes(c.status);
-    return `<details class="chamado" data-id="${c.id}">
+    const portal = c.canal === "portal_cliente";
+    return `<details class="chamado" data-id="${c.id}" data-portal="${portal ? 1 : 0}" data-cliente-ve="${c.cliente_tem_portal ? 1 : 0}">
       <summary>
         <span><span class="codigo">${esc(c.codigo)}</span> · <span class="titulo">${esc(c.titulo)}</span></span>
         <span>${selo(c.status)}</span>
-        <span class="meta"><span><b>${esc(c.cliente_nome || "—")}</b>${c.cliente_digitado ? ' <span class="selo alerta" title="Digitado: confira o cliente">fora da lista</span>' : ""}</span>
+        <span class="meta">${portal ? `<span class="selo novo" title="Aberto pelo cliente no portal">portal</span>` : ""}
+          <span><b>${esc(c.cliente_nome || "—")}</b>${portal && c.solicitante_nome ? ` · ${esc(c.solicitante_nome)}` : ""}${c.cliente_digitado ? ' <span class="selo alerta" title="Digitado: confira o cliente">fora da lista</span>' : ""}</span>
           <span>Dev: <b>${esc(c.desenvolvedor_nome || "—")}</b></span>
           ${c.consultor_nome ? `<span>Consultor: <b>${esc(c.consultor_nome)}</b></span>` : ""}
           <span>Prioridade: <b>${esc(NOME_PRIORIDADE[c.prioridade] || c.prioridade)}</b></span>
@@ -210,7 +283,9 @@
       return `<div class="pergunta situacao"><b>Pedido em ${esc(dataHora(c.informacao_pedida_em))}:</b> ${esc(c.informacao_pedida)}
         <div class="copiar" style="margin-top:8px"><input type="text" readonly value="${esc(linkComplemento(c))}" aria-label="Link do complemento">
           <button type="button" data-copiar="${esc(linkComplemento(c))}">Copiar link</button></div>
-        <span class="suave">Mande para ${esc(c.consultor_nome || "o consultor")}. Quando ele enviar, o chamado volta para “Novo”.</span></div>`;
+        <span class="suave">${c.canal === "portal_cliente"
+          ? "O cliente vê o pedido no portal e responde por lá; se preferir, mande este link."
+          : `Mande para ${esc(c.consultor_nome || "o consultor")}.`} Quando responderem, o chamado volta para “Novo”.</span></div>`;
     }
     if (c.status === "tarefa_criada") {
       return `<div class="pergunta situacao"><b>Tarefa ligada</b> ${c.tarefa_ligada_em ? "em " + esc(dataHora(c.tarefa_ligada_em)) : ""}:
@@ -292,7 +367,10 @@
     if (a === "abrir-pedir" || a === "abrir-recusar") {
       caixa.hidden = false;
       caixa.dataset.acao = a === "abrir-pedir" ? "pedir_informacao" : "recusar";
-      $(".rotulo-texto", caixa).textContent = a === "abrir-pedir" ? "O que falta? (o consultor vê este texto no link)" : "Motivo da recusa";
+      const portal = det.dataset.portal === "1", clienteVe = det.dataset.clienteVe === "1";
+      $(".rotulo-texto", caixa).textContent = a === "abrir-pedir"
+        ? (portal ? "O que falta? (o cliente vê este texto no portal)" : "O que falta? (o consultor vê este texto no link)")
+        : (clienteVe ? "Motivo da recusa (o cliente vê este texto no portal)" : "Motivo da recusa");
       $('button[data-acao="confirmar"]', caixa).textContent = a === "abrir-pedir" ? "Pedir e copiar o link" : "Recusar chamado";
       $("textarea", caixa).focus();
     } else if (a === "cancelar") caixa.hidden = true;
@@ -303,7 +381,7 @@
     } else if (a) triar(det, a);
   });
 
-  ["f-status", "f-ordem"].forEach((id) => $("#" + id).addEventListener("change", desenhar));
+  ["f-canal", "f-status", "f-ordem"].forEach((id) => $("#" + id).addEventListener("change", desenhar));
   $("#f-busca").addEventListener("input", desenhar);
   $("#recarregar").onclick = carregar;
   await carregar();
