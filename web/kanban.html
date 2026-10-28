@@ -63,10 +63,14 @@
   <div class="quadro" id="quadro"></div>
 </main>
 <script type="module">
-  import { sb, esc, $, exigirLogin, montarMenu, atualizarContadores, aviso, buscarTudo, horas } from "./assets/comum.js";
+  import { sb, esc, $, exigirLogin, montarMenu, atualizarContadores, aviso, buscarTudo, horas, ehConsultorLogado } from "./assets/comum.js";
 
-  const { usuario } = await exigirLogin();
+  const { usuario } = await exigirLogin({ consultor: true });   // consultor vê só as demandas dele (RLS, D72)
   await montarMenu(usuario);
+  if (ehConsultorLogado()) {
+    $(".sub").textContent = "Suas demandas: as que você é responsável ou tem agenda, com as agendas de toda a equipe nelas. "
+      + "Só leitura: status, datas e horas mudam no ClickUp e aparecem aqui na sincronização.";
+  }
 
   // Ordem das colunas (status do ClickUp, normalizados). Status desconhecido vira coluna própria antes de "Concluído".
   const COLUNAS = [

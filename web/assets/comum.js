@@ -51,24 +51,38 @@ export async function chamarFuncao(nome, corpo = {}) {
   return data;
 }
 
+// Consultor logado (D72): só lê Kanban e Horas, filtrados nele pelo banco (RLS).
+const PAGINAS_CONSULTOR = ["kanban.html", "horas.html"];
+let papelLogado = null;
+export const ehConsultorLogado = () => papelLogado === "consultor";
+
 /**
- * Garante login de gestor. Sem login → vai para login.html.
+ * Garante login. Sem login → vai para login.html.
+ * Gestor/admin: qualquer tela. Consultor: só as telas que passam { consultor: true };
+ * nas outras, vai para o Kanban.
  * Devolve { sessao, usuario } (usuario = linha de usuarios_sistema).
  */
-export async function exigirLogin() {
+export async function exigirLogin(opcoes = {}) {
   const { data: { session } } = await sb.auth.getSession();
   if (!session) {
     location.href = "login.html?volta=" + encodeURIComponent(location.pathname.split("/").pop() + location.search);
     throw new Error("sem login");
   }
   const { data: usuario } = await sb.from("usuarios_sistema").select("*").eq("id", session.user.id).maybeSingle();
+  if (usuario?.ativo && usuario.papel === "consultor" && usuario.consultor_id) {
+    if (!opcoes.consultor) { location.href = "kanban.html"; throw new Error("tela só de gestor"); }
+    papelLogado = "consultor";
+    return { sessao: session, usuario };
+  }
   if (!usuario || !usuario.ativo || !["admin", "gestor"].includes(usuario.papel)) {
     document.body.innerHTML = `<main><div class="cartao"><h1>Acesso não liberado</h1>
-      <p>Você entrou como <b>${esc(session.user.email)}</b>, mas este e-mail ainda não está cadastrado como gestor.
+      <p>Você entrou como <b>${esc(session.user.email)}</b>, mas este e-mail ainda não está cadastrado como gestor
+      (nem como consultor ligado ao cadastro).
       Peça ao administrador para liberar o acesso.</p><button id="sair">Sair</button></div></main>`;
     $("#sair").onclick = sair;
     throw new Error("sem acesso");
   }
+  papelLogado = usuario.papel;
   return { sessao: session, usuario };
 }
 
@@ -100,7 +114,7 @@ export async function montarMenu(usuario) {
   const topo = document.createElement("nav");
   topo.className = "topo";
   topo.innerHTML = marcaHtml() +
-    PAGINAS.map(([href, nome]) => `<a href="${href}" class="pagina ${href === atual ? "ativo" : ""}" data-pagina="${href}">${nome}</a>`).join("") +
+    PAGINAS.filter(([href]) => !ehConsultorLogado() || PAGINAS_CONSULTOR.includes(href)).map(([href, nome]) => `<a href="${href}" class="pagina ${href === atual ? "ativo" : ""}" data-pagina="${href}">${nome}</a>`).join("") +
     `<span class="direita"><span class="nome-usuario">${esc(usuario.nome)}</span><span id="lugar-tema"></span>
       <button class="pequeno" id="botao-sair">Sair</button></span>`;
   document.body.prepend(topo);
@@ -110,6 +124,7 @@ export async function montarMenu(usuario) {
 }
 
 export async function atualizarContadores() {
+  if (ehConsultorLogado()) return null;          // contadores são pendências do gestor
   const { data } = await sb.from("vw_pendencias_gestor").select("*").maybeSingle();
   const contador = (pagina, qtd, titulo) => {
     const link = $(`a[data-pagina="${pagina}"]`);

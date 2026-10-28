@@ -111,9 +111,12 @@ Fase 3, parte 1 **no ar** em 26/10/2026 (D58–D61, commit `ad97a51`): migraçã
 `formulario.html`, `complementar.html` e `triagem.html` (`assets/evidencias.js` = base das telas sem login). Testes do §10 com o Rodrigo.
 Portal do cliente (D62–D64) **pronto e testado localmente** em 26/10/2026, falta publicar (`08-implantacao.md` §11): migração 0010,
 ações do portal na função `formulario`, `portal.html` e links do portal na Triagem.
-Fase 4 decidida (D65–D72). Item 1 **pronto e testado localmente** em 26/10/2026, falta publicar (`08-implantacao.md` §12):
+Fase 4 decidida (D65–D74). Item 1 (criar no ClickUp, `08-implantacao.md` §12):
 migração 0011, Edge Function `clickup-criar` (regra do legado em `_compartilhado/clickup-criacao.ts`), Triagem com
-"Aprovar e criar no ClickUp", "Aprovar, crio à mão" e "Reenviar prints". Próximos: relatório (D71) e visão do consultor (D72).
+"Aprovar e criar no ClickUp", "Aprovar, crio à mão" e "Reenviar prints" — **publicado** em 28/10/2026 (testes do §12 com o Rodrigo).
+Relatório no painel de Horas (D73) e visão do consultor = Kanban + Horas com RLS (D74) **prontos e testados localmente** em 28/10/2026,
+falta publicar (`08-implantacao.md` §13): migração 0012 (`vw_horas_dia`, leitura do consultor), `horas.html`, `comum.js` e `kanban.html`.
+Prioridade do Rodrigo: **acelerar o MVP** com **bom gerenciamento das demandas**, sem amarrar nada novo ao ClickUp (D10).
 
 ## Como mexer em algo de uma fase já entregue
 

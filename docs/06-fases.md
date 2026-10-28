@@ -80,6 +80,9 @@ Ordem: criar no ClickUp → relatório → visão do consultor; cada item public
   `reenviar_prints`; testes `criacao.test.ts` com ClickUp simulado
 - [~] Triagem: **Aprovar e criar no ClickUp** (lista do cliente, vencimento e estimativa opcionais), **Aprovar, crio à mão** (D66),
   situação da criação (quem criou, link, avisos, erro) e **Reenviar prints**; botão desligado com o motivo quando não dá para criar
-- [ ] Publicar e testar a criação (`08-implantacao.md` §12)
-- [ ] Relatório de horas por consultor, cliente e período: agendas × tempo rastreado, CSV (D71)
-- [ ] Visão do consultor (somente leitura das demandas dele): login e RLS (D72)
+- [x] Publicar a criação: `db push` (0011), `functions deploy clickup-criar`, `git push` — no ar em 28/10/2026 (commits `69832f3`, `629379a`); testes do §12 com o Rodrigo
+- [~] Relatório no painel de Horas (D71, D73): migração `0012_relatorio_e_consultor.sql` com `vw_horas_dia` (agendas + tempo rastreado
+  por dia × consultor × demanda); `web/horas.html` com período de/até, consultor → cliente → demanda, rastreadas e diferença, CSV e impressão
+- [~] Visão do consultor (D72, D74): RLS de leitura do consultor (0012) + testes `99_testes_0012.sql`; `comum.js` com
+  `exigirLogin({ consultor: true })` e menu reduzido; Kanban e Horas abertos ao consultor
+- [ ] Publicar relatório e visão do consultor (`08-implantacao.md` §13) e criar o acesso dos consultores do piloto

@@ -195,6 +195,39 @@ Testes (marcar ao conferir):
 - [ ] **Sem conta:** gestor sem ClickUp conectado → botão desligado com o motivo; *Aprovar, crio à mão* continua funcionando.
 - [ ] **Renomear:** renomear a tarefa criada antes da sincronização → continua ligada (pelo id).
 
+## 13. Fase 4 — relatório de horas e visão do consultor (28/10/2026)
+
+```powershell
+npx supabase@latest db push --linked        # aplica a 0012_relatorio_e_consultor.sql
+git add CLAUDE.md docs supabase web
+git commit -m "Fase 4: relatório no painel de Horas e visão do consultor (D73, D74)"
+git push                                     # publica Horas, Kanban e o menu do consultor no Pages
+```
+
+**Acesso de um consultor** (um por pessoa do piloto):
+1. *Authentication → Users → Add user → Create new user*: e-mail **igual ao do ClickUp** (o mesmo do cadastro de Consultores), senha,
+   marque *Auto Confirm User*.
+2. No *SQL Editor* (troque o e-mail):
+
+```sql
+insert into public.usuarios_sistema (id, nome, email, papel, consultor_id)
+select u.id, c.nome, u.email, 'consultor', c.id
+  from auth.users u join public.consultores c on lower(c.email) = lower(u.email)
+ where lower(u.email) = lower('fulano@sankhya.com.br');
+```
+
+Se voltar "INSERT 0 0", o e-mail do login não bate com o do cadastro de Consultores. Para tirar o acesso: `update public.usuarios_sistema
+set ativo = false where email = '...';`
+
+Testes (marcar ao conferir):
+
+- [ ] **Período:** Horas → *Este mês* / *Mês passado* / datas à mão → os totais mudam; *Desde o corte* volta para tudo.
+- [ ] **Rastreadas:** um consultor que usa o cronômetro do ClickUp mostra "rastr." nas células e a diferença na última coluna.
+- [ ] **Demandas:** consultor → cliente → aparecem as demandas com link para o ClickUp.
+- [ ] **CSV:** *Exportar CSV* abre no Excel com colunas separadas e horas com vírgula.
+- [ ] **Consultor:** entrar com o login do consultor → menu só com Kanban e Horas; no Kanban só as demandas dele; nas Horas só as
+      horas dele; abrir `triagem.html` na barra de endereço → volta para o Kanban.
+
 ## Problemas comuns
 
 | Sintoma | O que fazer |
@@ -209,4 +242,6 @@ Testes (marcar ao conferir):
 | Triagem: "não está marcada para sincronizar" | Demandas → marcar a lista do cliente como Sincronizar |
 | Triagem: "ainda não tem usuário ligado na origem" | Rodar a sincronização (traz os membros) ou conferir o e-mail no cadastro de Consultores |
 | Triagem: tarefa criada, prints pendentes | Botão *Reenviar prints*; se repetir, ver o erro na própria mensagem |
+| Consultor entra e vê "Acesso não liberado" | Falta a linha em `usuarios_sistema` com `papel = 'consultor'` e `consultor_id` (§13) |
+| Consultor vê o Kanban vazio | Ele não é responsável por nenhuma tarefa das listas marcadas, ou o cadastro dele em Consultores não tem o usuário do ClickUp |
 | Varredura não roda sozinha | `select * from cron.job;` e `select * from net._http_response order by created desc limit 5;` |

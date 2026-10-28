@@ -194,6 +194,15 @@ Rodados em Postgres 16 local, com `auth.uid()` e os papéis do Supabase simulado
 - Testes: `supabase/testes/99_testes_0009.sql` (chave, listas, limite por IP, gravação, validações, permissões, complemento,
   aprovar/recusar, ligação pelo código, bucket).
 
+## Migração 0012 — relatório de horas e leitura do consultor (28/10/2026, fase 4)
+
+- `vw_horas_dia`: dia, mês, consultor, demanda (nome, status, link), cliente, gerente; minutos realizados, agendados, atrasados
+  (agendas consideradas, D34/D51) e **rastreados** (`registros_tempo` da tarefa → demanda da tarefa, desde o corte). Consultor logado
+  só vê as linhas dele (D73).
+- `eh_consultor()`, `demandas_do_consultor()` e políticas `consultor_le` (só leitura) em `tarefas`, `tarefas_responsaveis`,
+  `consultores`, `clientes`, `clientes_faps` e `registros_tempo` (só o próprio) (D74).
+- Testes: `supabase/testes/99_testes_0012.sql`.
+
 ## Migração 0011 — criação da tarefa pela triagem (26/10/2026, fase 4)
 
 - `chamados`: `criacao_situacao` (criando → criada | erro), `criacao_mensagem` (erro ou avisos), `criacao_url`, `criacao_lista_id`,

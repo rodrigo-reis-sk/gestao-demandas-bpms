@@ -12,12 +12,17 @@
   <script src="assets/tema.js"></script>
   <script src="config.js"></script>
   <style>
-    /* Painel de horas (D53): consultor × mês, desde a data de corte. Fonte: vw_horas_mes. */
-    .barra { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+    /* Painel e relatório de horas (D53, D71): consultor × mês → cliente → demanda, no período escolhido.
+       Fonte: vw_horas_dia (agendas + tempo rastreado). */
+    .barra { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+    .barra label { font-size: .8rem; color: var(--suave); display: flex; align-items: center; gap: 6px; margin: 0; }
+    .barra input[type=date] { width: auto; }
     .barra .resumo { color: var(--suave); font-size: .86rem; margin-left: auto; }
+    .atalhos { display: flex; gap: 6px; flex-wrap: wrap; }
     .legenda { display: flex; gap: 14px; flex-wrap: wrap; color: var(--suave); font-size: .8rem; margin-bottom: 10px; }
     .legenda i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
-    .i-real { background: var(--acento); } .i-agend { background: color-mix(in srgb, var(--suave) 55%, transparent); } .i-atras { background: var(--alerta); }
+    .i-real { background: var(--acento); } .i-agend { background: color-mix(in srgb, var(--suave) 55%, transparent); }
+    .i-atras { background: var(--alerta); } .i-rast { background: transparent; border: 2px solid var(--suave); }
     table.horas { font-size: .86rem; }
     table.horas th, table.horas td { white-space: nowrap; }
     table.horas td.cel { text-align: right; font-variant-numeric: tabular-nums; min-width: 86px; }
@@ -25,144 +30,256 @@
     td.cel small { display: block; color: var(--suave); font-size: .74rem; line-height: 1.3; }
     td.cel small .a { color: var(--alerta); font-weight: 600; }
     td.cel.vazio { color: var(--borda); }
-    tr.consultor td:first-child { font-weight: 600; cursor: pointer; }
-    tr.consultor td:first-child .seta { color: var(--suave); display: inline-block; width: 14px; transition: transform .15s; }
-    tr.consultor.aberto td:first-child .seta { transform: rotate(90deg); }
+    td.dif .mais { color: var(--alerta); font-weight: 600; } td.dif .menos { color: var(--suave); }
+    tr.consultor td:first-child, tr.cliente td:first-child { cursor: pointer; }
+    tr.consultor td:first-child { font-weight: 600; }
+    .seta { color: var(--suave); display: inline-block; width: 14px; transition: transform .15s; }
+    tr.aberto .seta { transform: rotate(90deg); }
     tr.cliente td:first-child { padding-left: 28px; color: var(--suave); }
+    tr.demanda td:first-child { padding-left: 52px; white-space: normal; max-width: 340px; }
+    tr.demanda td:first-child small { color: var(--suave); }
     tr.total td { font-weight: 700; border-top: 2px solid var(--borda); }
     td.tot, th.tot { background: var(--cartao-2); }
     @media (max-width: 640px) { .barra .resumo { margin-left: 0; width: 100%; } }
+    @media print {
+      nav.topo, .barra, .atalhos, .legenda button, #aviso { display: none !important; }
+      .cartao { box-shadow: none; }
+    }
   </style>
 </head>
 <body>
 <main>
   <h1>Horas</h1>
-  <p class="sub">Horas das agendas por consultor e mês, desde o corte (01/01/2026), só das demandas e agendas consideradas.
-    Horas da agenda = estimativa do ClickUp, senão o Período sem o almoço. Clique no consultor para ver por cliente.</p>
+  <p class="sub" id="sub">Horas das agendas por consultor e mês, só das demandas e agendas consideradas, comparadas com o tempo
+    rastreado no ClickUp. Horas da agenda = estimativa, senão o Período sem o almoço (D34). Clique no consultor para ver por
+    cliente e no cliente para ver as demandas.</p>
 
   <div class="barra">
+    <label>De <input type="date" id="de"></label>
+    <label>Até <input type="date" id="ate"></label>
+    <span class="atalhos">
+      <button type="button" class="pequeno" data-periodo="mes">Este mês</button>
+      <button type="button" class="pequeno" data-periodo="anterior">Mês passado</button>
+      <button type="button" class="pequeno" data-periodo="tri">Últimos 3 meses</button>
+      <button type="button" class="pequeno" data-periodo="tudo">Desde o corte</button>
+    </span>
+  </div>
+  <div class="barra">
+    <select id="consultor" aria-label="Consultor"><option value="">Todos os consultores</option></select>
     <select id="cliente" aria-label="Cliente"><option value="">Todos os clientes</option></select>
     <select id="gerente" aria-label="Gerente"><option value="">Todos os gerentes</option></select>
     <select id="ordem" aria-label="Ordenar">
       <option value="nome">Ordenar: consultor (A → Z)</option>
       <option value="real">Ordenar: mais horas realizadas</option>
       <option value="atras">Ordenar: mais horas atrasadas</option>
+      <option value="dif">Ordenar: maior diferença rastreado × realizado</option>
     </select>
+    <button type="button" id="csv">Exportar CSV</button>
+    <button type="button" id="imprimir">Imprimir</button>
     <span class="resumo" id="resumo">Carregando…</span>
   </div>
   <div class="legenda">
-    <span><i class="i-real"></i><b>Realizadas</b> (concluídas no ClickUp)</span>
+    <span><i class="i-real"></i><b>Realizadas</b> (concluídas)</span>
     <span><i class="i-agend"></i>Agendadas (hoje em diante)</span>
     <span><i class="i-atras"></i>Atrasadas (data passada sem baixa)</span>
+    <span><i class="i-rast"></i>Rastreadas (cronômetro do ClickUp); diferença = rastreadas − realizadas</span>
   </div>
 
   <div class="cartao tabela-rolagem" style="padding:0"><table class="horas" id="tabela"></table></div>
 </main>
 <script type="module">
-  import { sb, esc, $, exigirLogin, montarMenu, atualizarContadores, aviso, buscarTudo, horas } from "./assets/comum.js";
+  import { sb, esc, $, exigirLogin, montarMenu, atualizarContadores, aviso, buscarTudo, horas, ehConsultorLogado } from "./assets/comum.js";
 
-  const { usuario } = await exigirLogin();
+  const { usuario } = await exigirLogin({ consultor: true });   // consultor vê só as horas dele (RLS, D72)
   await montarMenu(usuario);
+  const consultor = ehConsultorLogado();
+  if (consultor) {
+    $("#consultor").hidden = true;
+    $("#sub").textContent = "Suas horas por mês: agendas (realizadas, agendadas e atrasadas) e o tempo que você rastreou no ClickUp. "
+      + "Clique no cliente para ver as demandas.";
+  }
 
   const texto = (a, b) => String(a ?? "").localeCompare(String(b ?? ""), "pt-BR", { numeric: true, sensitivity: "base" });
   const NOMES_MES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
   const rotuloMes = (m) => `${NOMES_MES[Number(m.slice(5, 7)) - 1]}/${m.slice(2, 4)}`;
-  const SEM = "(sem responsável)";
+  const SEM = "(sem responsável)", SEM_CLI = "(sem cliente)";
+  const CORTE = "2026-01-01";
+  const hoje = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Campo_Grande" });   // AAAA-MM-DD no MS
 
   let linhas = [];
-  const gerentePorCliente = new Map();     // cliente_id → siglas dos gerentes das listas do cliente
-  const abertos = new Set();
+  const abertos = new Set();               // "consultor" e "consultor|cliente" abertos
 
-  const CHAVE = "gestao-bpms-horas-v1";
-  try {
-    const f = JSON.parse(localStorage.getItem(CHAVE)) || {};
-    if (f.ordem) $("#ordem").value = f.ordem;
-  } catch { /* ignora */ }
+  // ---------------------------------------------------------------- período e filtros lembrados
+  const CHAVE = "gestao-bpms-horas-v2";
+  let lembrados = {};
+  try { lembrados = JSON.parse(localStorage.getItem(CHAVE)) || {}; } catch { /* ignora */ }
+  if (lembrados.ordem) $("#ordem").value = lembrados.ordem;
+  $("#de").value = lembrados.de || CORTE;
+  $("#ate").value = lembrados.ate || "";
+  const guardar = () => {
+    try { localStorage.setItem(CHAVE, JSON.stringify({ ordem: $("#ordem").value, de: $("#de").value, ate: $("#ate").value })); } catch { /* ignora */ }
+  };
 
+  function atalho(tipo) {
+    const [a, m] = hoje().split("-").map(Number);
+    const ultimoDia = (ano, mes) => new Date(Date.UTC(ano, mes, 0)).toISOString().slice(0, 10);   // mes 1..12
+    const inicio = (ano, mes) => `${ano}-${String(mes).padStart(2, "0")}-01`;
+    const voltar = (n) => { const d = new Date(Date.UTC(a, m - 1 - n, 1)); return [d.getUTCFullYear(), d.getUTCMonth() + 1]; };
+    if (tipo === "mes") { $("#de").value = inicio(a, m); $("#ate").value = ultimoDia(a, m); }
+    if (tipo === "anterior") { const [y, n] = voltar(1); $("#de").value = inicio(y, n); $("#ate").value = ultimoDia(y, n); }
+    if (tipo === "tri") { const [y, n] = voltar(2); $("#de").value = inicio(y, n); $("#ate").value = ultimoDia(a, m); }
+    if (tipo === "tudo") { $("#de").value = CORTE; $("#ate").value = ""; }
+  }
+
+  // ---------------------------------------------------------------- dados
   async function carregar() {
-    let faps;
+    $("#resumo").textContent = "Carregando…";
+    const de = $("#de").value || CORTE, ate = $("#ate").value;
     try {
-      [linhas, faps] = await Promise.all([
-        buscarTudo(() => sb.from("vw_horas_mes").select("*").order("mes")),
-        buscarTudo(() => sb.from("clientes_faps").select("cliente_id,sigla_gerente").order("id")),
-      ]);
+      linhas = await buscarTudo(() => {
+        let q = sb.from("vw_horas_dia").select("*").gte("dia", de);
+        if (ate) q = q.lte("dia", ate);
+        return q.order("dia").order("demanda_id").order("consultor_id");
+      });
     } catch (e) { return aviso(e.message, "erro"); }
-    for (const f of faps) {
-      if (!f.cliente_id || !f.sigla_gerente) continue;
-      if (!gerentePorCliente.has(f.cliente_id)) gerentePorCliente.set(f.cliente_id, new Set());
-      gerentePorCliente.get(f.cliente_id).add(f.sigla_gerente);
-    }
-    $("#cliente").innerHTML = `<option value="">Todos os clientes</option>` +
-      [...new Set(linhas.map((l) => l.cliente_nome).filter(Boolean))].sort(texto).map((c) => `<option>${esc(c)}</option>`).join("");
-    $("#gerente").innerHTML = `<option value="">Todos os gerentes</option>` +
-      [...new Set(faps.map((f) => f.sigla_gerente).filter(Boolean))].sort().map((s) => `<option>${esc(s)}</option>`).join("");
+    const opcoes = (id, valores, rotulo) => {
+      const atual = $("#" + id).value;
+      $("#" + id).innerHTML = `<option value="">${rotulo}</option>` +
+        [...new Set(valores.filter(Boolean))].sort(texto).map((v) => `<option>${esc(v)}</option>`).join("");
+      $("#" + id).value = [...$("#" + id).options].some((o) => o.value === atual) ? atual : "";
+    };
+    opcoes("consultor", linhas.map((l) => l.consultor_nome), "Todos os consultores");
+    opcoes("cliente", linhas.map((l) => l.cliente_nome), "Todos os clientes");
+    opcoes("gerente", linhas.map((l) => l.sigla_gerente), "Todos os gerentes");
     desenhar();
     atualizarContadores();
   }
 
-  const zero = () => ({ r: 0, g: 0, a: 0 });
-  const somar = (t, l) => { t.r += l.minutos_realizados ?? 0; t.g += l.minutos_agendados ?? 0; t.a += l.minutos_atrasados ?? 0; return t; };
+  function filtradas() {
+    const con = $("#consultor").value, cli = $("#cliente").value, ger = $("#gerente").value;
+    return linhas.filter((l) => (!con || l.consultor_nome === con) && (!cli || l.cliente_nome === cli) && (!ger || l.sigla_gerente === ger));
+  }
 
+  const zero = () => ({ r: 0, g: 0, a: 0, t: 0 });
+  const somar = (x, l) => {
+    x.r += l.minutos_realizados ?? 0; x.g += l.minutos_agendados ?? 0; x.a += l.minutos_atrasados ?? 0; x.t += l.minutos_rastreados ?? 0;
+    return x;
+  };
+  // nó da árvore: totais, por mês e filhos
+  const no = (nome, extra = {}) => ({ nome, total: zero(), porMes: new Map(), filhos: new Map(), ...extra });
+  function acumular(n, l) {
+    somar(n.total, l);
+    if (!n.porMes.has(l.mes)) n.porMes.set(l.mes, zero());
+    somar(n.porMes.get(l.mes), l);
+  }
+
+  /** consultor → cliente → demanda, com totais por mês. */
+  function arvore(ls) {
+    const raiz = no("Total");
+    for (const l of ls) {
+      const nc = l.consultor_nome ?? SEM, ncli = l.cliente_nome ?? SEM_CLI;
+      if (!raiz.filhos.has(nc)) raiz.filhos.set(nc, no(nc));
+      const c = raiz.filhos.get(nc);
+      if (!c.filhos.has(ncli)) c.filhos.set(ncli, no(ncli));
+      const k = c.filhos.get(ncli);
+      if (!k.filhos.has(l.demanda_id)) k.filhos.set(l.demanda_id, no(l.demanda_nome, { url: l.demanda_url, status: l.demanda_status }));
+      for (const alvo of [raiz, c, k, k.filhos.get(l.demanda_id)]) acumular(alvo, l);
+    }
+    return raiz;
+  }
+
+  // ---------------------------------------------------------------- desenho
   function celula(t, classe = "") {
-    if (!t || !(t.r || t.g || t.a)) return `<td class="cel vazio ${classe}">—</td>`;
-    const det = [t.g ? `${horas(t.g)} agend.` : "", t.a ? `<span class="a">${horas(t.a)} atras.</span>` : ""].filter(Boolean).join(" · ");
+    if (!t || !(t.r || t.g || t.a || t.t)) return `<td class="cel vazio ${classe}">—</td>`;
+    const det = [t.g ? `${horas(t.g)} agend.` : "", t.a ? `<span class="a">${horas(t.a)} atras.</span>` : "",
+                 t.t ? `${horas(t.t)} rastr.` : ""].filter(Boolean).join(" · ");
     return `<td class="cel ${classe}"><span class="r">${horas(t.r)}</span>${det ? `<small>${det}</small>` : ""}</td>`;
+  }
+  function celulaDif(t) {
+    if (!t.t && !t.r) return `<td class="cel dif vazio">—</td>`;
+    const d = t.t - t.r;
+    const sinal = d > 0 ? "+" : d < 0 ? "−" : "";
+    return `<td class="cel dif"><span class="${d > 0 ? "mais" : "menos"}">${sinal}${horas(Math.abs(d)) === "—" ? "0h" : horas(Math.abs(d))}</span>
+      <small>${horas(t.t)} rastr.</small></td>`;
   }
 
   function desenhar() {
-    const cli = $("#cliente").value, ger = $("#gerente").value;
-    const ls = linhas.filter((l) => (!cli || l.cliente_nome === cli) && (!ger || gerentePorCliente.get(l.cliente_id)?.has(ger)));
+    const ls = filtradas();
     const meses = [...new Set(ls.map((l) => l.mes))].sort();
-
-    // consultor → { total, porMes, clientes: cliente → { total, porMes } }
-    const cons = new Map();
-    const totalMes = new Map(), totalGeral = zero();
-    for (const l of ls) {
-      const nc = l.consultor_nome ?? SEM, ncli = l.cliente_nome ?? "(sem cliente)";
-      if (!cons.has(nc)) cons.set(nc, { nome: nc, total: zero(), porMes: new Map(), clientes: new Map() });
-      const c = cons.get(nc);
-      if (!c.clientes.has(ncli)) c.clientes.set(ncli, { nome: ncli, total: zero(), porMes: new Map() });
-      const k = c.clientes.get(ncli);
-      for (const alvo of [c, k]) {
-        somar(alvo.total, l);
-        if (!alvo.porMes.has(l.mes)) alvo.porMes.set(l.mes, zero());
-        somar(alvo.porMes.get(l.mes), l);
-      }
-      if (!totalMes.has(l.mes)) totalMes.set(l.mes, zero());
-      somar(totalMes.get(l.mes), l);
-      somar(totalGeral, l);
-    }
+    const raiz = arvore(ls);
     const ordem = $("#ordem").value;
     const cmp = ordem === "real" ? (a, b) => b.total.r - a.total.r
       : ordem === "atras" ? (a, b) => b.total.a - a.total.a
+      : ordem === "dif" ? (a, b) => Math.abs(b.total.t - b.total.r) - Math.abs(a.total.t - a.total.r)
       : (a, b) => (a.nome === SEM) - (b.nome === SEM) || texto(a.nome, b.nome);
-    const lista = [...cons.values()].sort(cmp);
+    const linha = (classe, rotulo, n, dados = "") =>
+      `<tr class="${classe}" ${dados}><td>${rotulo}</td>${meses.map((m) => celula(n.porMes.get(m))).join("")}${celula(n.total, "tot")}${celulaDif(n.total)}</tr>`;
 
-    const cab = `<thead><tr><th>Consultor</th>${meses.map((m) => `<th style="text-align:right">${rotuloMes(m)}</th>`).join("")}<th class="tot" style="text-align:right">Total</th></tr></thead>`;
-    const corpo = lista.map((c) => {
+    const corpo = [...raiz.filhos.values()].sort(cmp).map((c) => {
       const aberto = abertos.has(c.nome);
-      let html = `<tr class="consultor ${aberto ? "aberto" : ""}" data-consultor="${esc(c.nome)}">
-        <td><span class="seta">▸</span>${esc(c.nome)}</td>${meses.map((m) => celula(c.porMes.get(m))).join("")}${celula(c.total, "tot")}</tr>`;
-      if (aberto) {
-        html += [...c.clientes.values()].sort((a, b) => b.total.r - a.total.r || texto(a.nome, b.nome)).map((k) =>
-          `<tr class="cliente"><td>${esc(k.nome)}</td>${meses.map((m) => celula(k.porMes.get(m))).join("")}${celula(k.total, "tot")}</tr>`).join("");
+      let html = linha(`consultor ${aberto ? "aberto" : ""}`, `<span class="seta">▸</span>${esc(c.nome)}`, c, `data-chave="${esc(c.nome)}"`);
+      if (!aberto) return html;
+      for (const k of [...c.filhos.values()].sort((a, b) => b.total.r - a.total.r || texto(a.nome, b.nome))) {
+        const chave = `${c.nome}|${k.nome}`, kAberto = abertos.has(chave);
+        html += linha(`cliente ${kAberto ? "aberto" : ""}`, `<span class="seta">▸</span>${esc(k.nome)}`, k, `data-chave="${esc(chave)}"`);
+        if (!kAberto) continue;
+        html += [...k.filhos.values()].sort((a, b) => b.total.r - a.total.r || texto(a.nome, b.nome)).map((d) =>
+          linha("demanda", `${d.url ? `<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.nome)}</a>` : esc(d.nome)}`
+            + (d.status ? ` <small>· ${esc(d.status)}</small>` : ""), d)).join("");
       }
       return html;
     }).join("");
-    const rodape = `<tr class="total"><td>Total</td>${meses.map((m) => celula(totalMes.get(m))).join("")}${celula(totalGeral, "tot")}</tr>`;
-    $("#tabela").innerHTML = ls.length ? cab + `<tbody>${corpo}${rodape}</tbody>` : `<tbody><tr><td class="suave">Sem horas para esse filtro.</td></tr></tbody>`;
-    $("#resumo").textContent = `${lista.length} consultores · ${horas(totalGeral.r)} realizadas · ${horas(totalGeral.g)} agendadas · ${horas(totalGeral.a)} atrasadas`;
+
+    const cab = `<thead><tr><th>${consultor ? "Você" : "Consultor"}</th>${meses.map((m) => `<th style="text-align:right">${rotuloMes(m)}</th>`).join("")}`
+      + `<th class="tot" style="text-align:right">Total</th><th style="text-align:right" title="Rastreadas − realizadas">Rastr. − real.</th></tr></thead>`;
+    $("#tabela").innerHTML = ls.length ? cab + `<tbody>${corpo}${linha("total", "Total", raiz)}</tbody>`
+      : `<tbody><tr><td class="suave">Sem horas para esse filtro e período.</td></tr></tbody>`;
+    const t = raiz.total;
+    $("#resumo").textContent = `${raiz.filhos.size} consultor(es) · ${horas(t.r)} realizadas · ${horas(t.g)} agendadas · `
+      + `${horas(t.a)} atrasadas · ${horas(t.t)} rastreadas`;
   }
 
-  for (const id of ["cliente", "gerente", "ordem"]) $("#" + id).onchange = () => {
-    try { localStorage.setItem(CHAVE, JSON.stringify({ ordem: $("#ordem").value })); } catch { /* ignora */ }
-    desenhar();
-  };
+  // ---------------------------------------------------------------- CSV (abre no Excel: ";" e vírgula decimal)
+  function exportarCsv() {
+    const ls = filtradas();
+    if (!ls.length) { aviso("Nada para exportar nesse filtro.", "erro"); return; }
+    const h = (min) => (Math.round((min ?? 0) / 6) / 10).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    const campo = (v) => { const s = String(v ?? ""); return /[;"\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+    // uma linha por consultor × demanda × mês
+    const grupos = new Map();
+    for (const l of ls) {
+      const k = [l.consultor_nome, l.demanda_id, l.mes].join("|");
+      if (!grupos.has(k)) grupos.set(k, { l, x: zero() });
+      somar(grupos.get(k).x, l);
+    }
+    const cab = ["Consultor", "Cliente", "Gerente", "Demanda", "Status", "Mês", "Realizadas (h)", "Agendadas (h)",
+      "Atrasadas (h)", "Rastreadas (h)", "Rastreadas - realizadas (h)", "Link"];
+    const corpo = [...grupos.values()]
+      .sort((a, b) => texto(a.l.consultor_nome, b.l.consultor_nome) || texto(a.l.cliente_nome, b.l.cliente_nome)
+        || texto(a.l.demanda_nome, b.l.demanda_nome) || texto(a.l.mes, b.l.mes))
+      .map(({ l, x }) => [l.consultor_nome ?? SEM, l.cliente_nome ?? SEM_CLI, l.sigla_gerente, l.demanda_nome, l.demanda_status,
+        l.mes.slice(0, 7), h(x.r), h(x.g), h(x.a), h(x.t), h(x.t - x.r), l.demanda_url].map(campo).join(";"));
+    const csv = "﻿" + [cab.join(";"), ...corpo].join("\r\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    a.download = `horas_${$("#de").value || CORTE}_a_${$("#ate").value || hoje()}.csv`;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    aviso(`${corpo.length} linha(s) exportada(s).`, "ok");
+  }
+
+  // ---------------------------------------------------------------- eventos
+  for (const b of document.querySelectorAll("[data-periodo]")) b.onclick = () => { atalho(b.dataset.periodo); guardar(); carregar(); };
+  for (const id of ["de", "ate"]) $("#" + id).onchange = () => { guardar(); carregar(); };
+  for (const id of ["consultor", "cliente", "gerente", "ordem"]) $("#" + id).onchange = () => { guardar(); desenhar(); };
+  $("#csv").onclick = exportarCsv;
+  $("#imprimir").onclick = () => window.print();
   $("#tabela").onclick = (e) => {
-    const tr = e.target.closest("tr.consultor");
+    if (e.target.closest("a")) return;
+    const tr = e.target.closest("tr.consultor, tr.cliente");
     if (!tr) return;
-    const n = tr.dataset.consultor;
-    abertos.has(n) ? abertos.delete(n) : abertos.add(n);
+    const k = tr.dataset.chave;
+    abertos.has(k) ? abertos.delete(k) : abertos.add(k);
     desenhar();
   };
   await carregar();
