@@ -15,8 +15,18 @@
 <body>
 <main>
   <h1>Consultores</h1>
-  <p class="sub">Marque quem entra na sincronização. Uma tarefa só entra se o consultor <b>e</b> a lista estiverem marcados.
-    As pessoas novas do ClickUp aparecem aqui sozinhas (desmarcadas), ligadas pelo e-mail.</p>
+  <p class="sub">Pessoas do ClickUp (aparecem sozinhas, ligadas pelo e-mail). Marque quem aparece nos filtros e painéis e,
+    na coluna <b>Acesso</b>, dê login ao sistema: o consultor vê só o Kanban e as Horas dele (D74, D75).
+    Acesso de gestor só o admin dá.</p>
+
+  <div class="cartao" id="senha-gerada" hidden>
+    <h2 style="margin-top:0">Acesso pronto</h2>
+    <p class="suave" style="margin-top:0">Mande estes dados para a pessoa (de preferência por um canal privado). A senha temporária
+      aparece só agora; no primeiro login o sistema pede uma senha nova.</p>
+    <pre id="sg-texto" style="white-space:pre-wrap;margin:0 0 10px"></pre>
+    <p class="acoes"><button type="button" class="primario" id="sg-copiar">Copiar</button>
+      <button type="button" id="sg-fechar">Fechar</button></p>
+  </div>
 
   <div class="cartao">
     <div class="acoes" style="margin-bottom:10px">
@@ -32,19 +42,48 @@
   </div>
 </main>
 <script type="module">
-  import { sb, esc, $, exigirLogin, montarMenu, aviso, dataHora } from "./assets/comum.js";
+  import { sb, esc, $, exigirLogin, montarMenu, aviso, dataHora, haQuanto, chamarFuncao } from "./assets/comum.js";
 
   const { usuario } = await exigirLogin();
   await montarMenu(usuario);
 
   const PAPEIS = { consultor: "Consultor", desenvolvedor: "Desenvolvedor", gerente_projetos: "Gerente de projetos" };
   let consultores = [];
+  const acessos = new Map();             // consultor_id → { papel, ativo, trocar_senha, ultimo_login, usuario_id }
+  const ehAdmin = usuario.papel === "admin";
+  const NOME_ACESSO = { admin: "Admin", gestor: "Gestor", consultor: "Consultor" };
 
   async function carregar() {
-    const { data, error } = await sb.from("consultores").select("*").order("nome");
-    if (error) return aviso(error.message, "erro");
-    consultores = data ?? [];
+    const [cs, ac] = await Promise.all([
+      sb.from("consultores").select("*").order("nome"),
+      sb.rpc("situacao_acessos"),
+    ]);
+    if (cs.error) return aviso(cs.error.message, "erro");
+    if (ac.error) aviso("Situação dos acessos: " + ac.error.message, "erro");
+    consultores = cs.data ?? [];
+    acessos.clear();
+    for (const a of ac.data ?? []) acessos.set(a.consultor_id, a);
     desenhar();
+  }
+
+  // Coluna Acesso: situação + botões conforme quem está logado (as regras são conferidas de novo no banco)
+  function celulaAcesso(c) {
+    const a = acessos.get(c.id);
+    const proprio = a?.usuario_id === usuario.id;
+    const podeMexer = a && !proprio && (a.papel === "consultor" || (ehAdmin && a.papel === "gestor"));
+    const escolha = ehAdmin
+      ? `<select data-papel="${c.id}" aria-label="Tipo de acesso"><option value="consultor">Consultor</option><option value="gestor">Gestor</option></select>` : "";
+    if (!c.email) return `<td><span class="suave" title="O login usa o e-mail do cadastro">sem e-mail</span></td>`;
+    if (!a || !a.ativo) {
+      return `<td>${a ? `<span class="selo">desativado</span> ` : ""}<span class="acoes" style="display:inline-flex">${escolha}
+        <button type="button" class="pequeno" data-acesso="dar_acesso" data-id="${c.id}">${a ? "Reativar" : "Dar acesso"}</button></span></td>`;
+    }
+    const info = [proprio ? "você" : "", a.ultimo_login ? `último login ${haQuanto(a.ultimo_login)}` : "nunca entrou",
+                  a.trocar_senha ? "senha temporária" : ""].filter(Boolean).join(" · ");
+    return `<td><span class="selo ok">${esc(NOME_ACESSO[a.papel] ?? a.papel)}</span> <span class="suave">${esc(info)}</span>
+      ${podeMexer ? `<br><span class="acoes" style="display:inline-flex;margin-top:4px">
+        <button type="button" class="pequeno" data-acesso="nova_senha" data-id="${c.id}">Nova senha</button>
+        <button type="button" class="pequeno" data-acesso="tirar_acesso" data-id="${c.id}">Tirar acesso</button></span>` : ""}</td>`;
   }
 
   function desenhar() {
@@ -55,7 +94,7 @@
       (!busca || `${c.nome} ${c.email ?? ""} ${c.nome_externo ?? ""}`.toLowerCase().includes(busca)));
     $("#resumo").textContent = `${consultores.filter((c) => c.sincronizar).length} sincronizando de ${consultores.length}`;
 
-    $("#tabela").innerHTML = `<tr><th>Nome</th><th>E-mail</th><th>Papel</th><th>No ClickUp</th><th>Sincronizar</th><th>Ativo</th></tr>` +
+    $("#tabela").innerHTML = `<tr><th>Nome</th><th>E-mail</th><th>Papel</th><th>No ClickUp</th><th>Sincronizar</th><th>Ativo</th><th>Acesso</th></tr>` +
       lista.map((c) => `<tr>
         <td>${esc(c.nome)}${c.nome_externo && c.nome_externo !== c.nome ? `<br><span class="suave">${esc(c.nome_externo)}</span>` : ""}</td>
         <td>${esc(c.email ?? "—")}</td>
@@ -66,6 +105,7 @@
         <td><label class="chave" title="${c.sincronizar_desde ? "desde " + dataHora(c.sincronizar_desde) : ""}">
           <input type="checkbox" data-id="${c.id}" data-campo="sincronizar" ${c.sincronizar ? "checked" : ""}><span></span></label></td>
         <td><label class="chave"><input type="checkbox" data-id="${c.id}" data-campo="ativo" ${c.ativo ? "checked" : ""}><span></span></label></td>
+        ${celulaAcesso(c)}
       </tr>`).join("");
   }
 
@@ -83,6 +123,46 @@
     }
     desenhar();
   });
+  // ---------------------------------------------------------------- acessos (D75)
+  const armados = new Set();             // "Tirar acesso" pede um segundo clique
+  $("#tabela").addEventListener("click", async (ev) => {
+    const b = ev.target.closest("button[data-acesso]");
+    if (!b) return;
+    const acao = b.dataset.acesso, id = b.dataset.id;
+    if (acao === "tirar_acesso" && !armados.has(id)) {
+      armados.add(id); b.textContent = "Confirmar?";
+      setTimeout(() => { armados.delete(id); b.textContent = "Tirar acesso"; }, 4000);
+      return;
+    }
+    armados.delete(id);
+    const papel = document.querySelector(`select[data-papel="${id}"]`)?.value || "consultor";
+    b.disabled = true;
+    try {
+      const r = await chamarFuncao("acessos", { acao, consultor_id: id, papel });
+      if (acao === "tirar_acesso") aviso(`Acesso de ${r.nome} desativado.`, "ok");
+      else mostrarSenha(r);
+    } catch (e) {
+      aviso(e.message, "erro");
+    } finally {
+      b.disabled = false;
+      await carregar();
+    }
+  });
+
+  function mostrarSenha(r) {
+    const login = new URL("login.html", location.href).href;
+    $("#sg-texto").textContent = `Acesso ao sistema de demandas BP-MS (${NOME_ACESSO[r.papel] ?? r.papel})\n`
+      + `Endereço: ${login}\nE-mail: ${r.email}\nSenha temporária: ${r.senha}\n`
+      + `No primeiro login, o sistema pede uma senha nova.`;
+    $("#senha-gerada").hidden = false;
+    $("#senha-gerada").scrollIntoView({ behavior: "smooth" });
+  }
+  $("#sg-copiar").onclick = async () => {
+    try { await navigator.clipboard.writeText($("#sg-texto").textContent); aviso("Copiado.", "ok"); }
+    catch { aviso("Não deu para copiar sozinho: selecione o texto e use Ctrl+C.", "erro"); }
+  };
+  $("#sg-fechar").onclick = () => { $("#senha-gerada").hidden = true; $("#sg-texto").textContent = ""; };
+
   $("#busca").oninput = desenhar;
   $("#filtro").onchange = desenhar;
 

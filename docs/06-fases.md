@@ -85,4 +85,7 @@ Ordem: criar no ClickUp → relatório → visão do consultor; cada item public
   por dia × consultor × demanda); `web/horas.html` com período de/até, consultor → cliente → demanda, rastreadas e diferença, CSV e impressão
 - [~] Visão do consultor (D72, D74): RLS de leitura do consultor (0012) + testes `99_testes_0012.sql`; `comum.js` com
   `exigirLogin({ consultor: true })` e menu reduzido; Kanban e Horas abertos ao consultor
-- [ ] Publicar relatório e visão do consultor (`08-implantacao.md` §13) e criar o acesso dos consultores do piloto
+- [x] Publicar relatório e visão do consultor (`08-implantacao.md` §13) — no ar em 28/10/2026 (commit `1b2eaa1`)
+- [~] Acessos pela tela Consultores (D75): migração `0013_acessos.sql` (regras, situação dos acessos, senha temporária) + testes
+  `99_testes_0013.sql`; Edge Function `acessos`; coluna Acesso em `consultores.html`; botão **Senha** e troca obrigatória no 1º login (`comum.js`)
+- [ ] Publicar os acessos (`08-implantacao.md` §14) e dar acesso aos consultores do piloto pela tela

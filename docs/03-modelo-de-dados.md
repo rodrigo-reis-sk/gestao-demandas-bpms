@@ -194,6 +194,14 @@ Rodados em Postgres 16 local, com `auth.uid()` e os papéis do Supabase simulado
 - Testes: `supabase/testes/99_testes_0009.sql` (chave, listas, limite por IP, gravação, validações, permissões, complemento,
   aprovar/recusar, ligação pelo código, bucket).
 
+## Migração 0013 — acessos pela tela Consultores (28/10/2026, D75)
+
+- `usuarios_sistema`: `trocar_senha` (senha temporária → a tela pede a nova), `acesso_por`, `acesso_em`.
+- `situacao_acessos()` (gestor): acesso de cada pessoa do cadastro, com o último login (`auth.users.last_sign_in_at`).
+- Só a chave de serviço (Edge Function `acessos`): `usuario_do_consultor`, `preparar_acesso` (regras de quem pode), `gravar_acesso`,
+  `tirar_acesso`. A pessoa logada: `senha_trocada()`.
+- Testes: `supabase/testes/99_testes_0013.sql`.
+
 ## Migração 0012 — relatório de horas e leitura do consultor (28/10/2026, fase 4)
 
 - `vw_horas_dia`: dia, mês, consultor, demanda (nome, status, link), cliente, gerente; minutos realizados, agendados, atrasados

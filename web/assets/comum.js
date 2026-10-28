@@ -116,11 +116,57 @@ export async function montarMenu(usuario) {
   topo.innerHTML = marcaHtml() +
     PAGINAS.filter(([href]) => !ehConsultorLogado() || PAGINAS_CONSULTOR.includes(href)).map(([href, nome]) => `<a href="${href}" class="pagina ${href === atual ? "ativo" : ""}" data-pagina="${href}">${nome}</a>`).join("") +
     `<span class="direita"><span class="nome-usuario">${esc(usuario.nome)}</span><span id="lugar-tema"></span>
+      <button class="pequeno" id="botao-senha" title="Trocar minha senha">Senha</button>
       <button class="pequeno" id="botao-sair">Sair</button></span>`;
   document.body.prepend(topo);
   if (window.criarSeletorTema) $("#lugar-tema").replaceWith(window.criarSeletorTema());
   $("#botao-sair").onclick = sair;
+  $("#botao-senha").onclick = () => abrirTrocaSenha(false);
+  if (usuario.trocar_senha) abrirTrocaSenha(true);     // senha temporária da tela Consultores (D75)
   await atualizarContadores();
+}
+
+/** Janela "Trocar minha senha". obrigatoria = primeiro login com a senha temporária. */
+export function abrirTrocaSenha(obrigatoria) {
+  let d = $("#janela-senha");
+  if (!d) {
+    d = document.createElement("dialog");
+    d.id = "janela-senha";
+    d.className = "janela";
+    d.innerHTML = `<form method="dialog">
+      <h2 style="margin-top:0">Trocar minha senha</h2>
+      <p class="suave" id="js-motivo"></p>
+      <label for="js-nova">Senha nova (mínimo 8 caracteres)</label>
+      <input type="password" id="js-nova" autocomplete="new-password" minlength="8" required>
+      <label for="js-conf">Repita a senha nova</label>
+      <input type="password" id="js-conf" autocomplete="new-password" minlength="8" required>
+      <p class="erro-texto" id="js-erro" hidden></p>
+      <p class="acoes" style="margin-top:12px"><button type="submit" class="primario" id="js-salvar">Salvar senha</button>
+        <button type="button" id="js-depois">Depois</button></p></form>`;
+    document.body.append(d);
+    $("#js-depois", d).onclick = () => d.close();
+    $("form", d).onsubmit = async (ev) => {
+      ev.preventDefault();
+      const nova = $("#js-nova", d).value, conf = $("#js-conf", d).value, erro = $("#js-erro", d);
+      erro.hidden = true;
+      if (nova.length < 8) { erro.textContent = "Use pelo menos 8 caracteres."; erro.hidden = false; return; }
+      if (nova !== conf) { erro.textContent = "As duas senhas não são iguais."; erro.hidden = false; return; }
+      $("#js-salvar", d).disabled = true;
+      const { error } = await sb.auth.updateUser({ password: nova });
+      $("#js-salvar", d).disabled = false;
+      if (error) { erro.textContent = error.message; erro.hidden = false; return; }
+      await sb.rpc("senha_trocada");
+      d.close();
+      aviso("Senha trocada.", "ok");
+    };
+  }
+  $("#js-motivo", d).textContent = obrigatoria
+    ? "Você entrou com a senha temporária. Escolha uma senha sua (só você vai saber)."
+    : "Escolha a senha nova.";
+  $("#js-depois", d).style.display = obrigatoria ? "none" : "";    // primeiro login: sem "Depois"
+  $("#js-nova", d).value = $("#js-conf", d).value = "";
+  d.showModal();
+  if (obrigatoria) d.addEventListener("cancel", (e) => e.preventDefault(), { once: true });   // Esc não fecha
 }
 
 export async function atualizarContadores() {

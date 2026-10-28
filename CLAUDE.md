@@ -114,8 +114,9 @@ ações do portal na função `formulario`, `portal.html` e links do portal na T
 Fase 4 decidida (D65–D74). Item 1 (criar no ClickUp, `08-implantacao.md` §12):
 migração 0011, Edge Function `clickup-criar` (regra do legado em `_compartilhado/clickup-criacao.ts`), Triagem com
 "Aprovar e criar no ClickUp", "Aprovar, crio à mão" e "Reenviar prints" — **publicado** em 28/10/2026 (testes do §12 com o Rodrigo).
-Relatório no painel de Horas (D73) e visão do consultor = Kanban + Horas com RLS (D74) **prontos e testados localmente** em 28/10/2026,
-falta publicar (`08-implantacao.md` §13): migração 0012 (`vw_horas_dia`, leitura do consultor), `horas.html`, `comum.js` e `kanban.html`.
+Relatório no painel de Horas (D73) e visão do consultor = Kanban + Horas com RLS (D74), §13: migração 0012 (`vw_horas_dia`, leitura do consultor), `horas.html`, `comum.js` e `kanban.html`.
+§13 **publicado** em 28/10/2026 (commit `1b2eaa1`). Acessos pela tela Consultores (D75) **prontos e testados localmente**, falta
+publicar (`08-implantacao.md` §14): migração 0013, Edge Function `acessos`, `consultores.html` e troca de senha em `comum.js`.
 Prioridade do Rodrigo: **acelerar o MVP** com **bom gerenciamento das demandas**, sem amarrar nada novo ao ClickUp (D10).
 
 ## Como mexer em algo de uma fase já entregue

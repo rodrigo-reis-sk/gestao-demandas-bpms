@@ -204,7 +204,7 @@ git commit -m "Fase 4: relatório no painel de Horas e visão do consultor (D73,
 git push                                     # publica Horas, Kanban e o menu do consultor no Pages
 ```
 
-**Acesso de um consultor** (um por pessoa do piloto):
+**Acesso de um consultor:** desde a D75 é pela tela **Consultores → Dar acesso** (§14). O caminho antigo, por SQL, fica como reserva:
 1. *Authentication → Users → Add user → Create new user*: e-mail **igual ao do ClickUp** (o mesmo do cadastro de Consultores), senha,
    marque *Auto Confirm User*.
 2. No *SQL Editor* (troque o e-mail):
@@ -228,6 +228,28 @@ Testes (marcar ao conferir):
 - [ ] **Consultor:** entrar com o login do consultor → menu só com Kanban e Horas; no Kanban só as demandas dele; nas Horas só as
       horas dele; abrir `triagem.html` na barra de endereço → volta para o Kanban.
 
+## 14. Acessos pela tela Consultores (28/10/2026, D75)
+
+```powershell
+npx supabase@latest db push --linked                          # aplica a 0013_acessos.sql
+npx supabase@latest functions deploy acessos --use-api        # função nova
+git add CLAUDE.md docs supabase web
+git commit -m "Acessos pela tela Consultores (D75)"
+git push
+```
+
+Testes (marcar ao conferir):
+
+- [ ] **Dar acesso:** Consultores → numa pessoa sem acesso, *Dar acesso* → aparece "Acesso pronto" com endereço, e-mail e senha
+      temporária → *Copiar*.
+- [ ] **Primeiro login:** numa aba anônima, entrar com esses dados → abre "Trocar minha senha" sem o botão *Depois* → salvar → o
+      consultor vê só Kanban e Horas. Na tela Consultores a pessoa deixa de mostrar "senha temporária".
+- [ ] **Nova senha:** *Nova senha* → senha temporária nova; a antiga para de funcionar.
+- [ ] **Tirar acesso:** *Tirar acesso* → *Confirmar?* → a pessoa aparece "desativado" e, ao recarregar, não vê mais nada.
+      *Reativar* devolve o acesso com outra senha temporária.
+- [ ] **Gestor:** como admin, escolher *Gestor* antes de *Dar acesso*. Um gestor que não é admin não vê essa escolha e não mexe em gestores.
+- [ ] **Senha:** o botão *Senha* do menu troca a própria senha.
+
 ## Problemas comuns
 
 | Sintoma | O que fazer |
@@ -242,6 +264,7 @@ Testes (marcar ao conferir):
 | Triagem: "não está marcada para sincronizar" | Demandas → marcar a lista do cliente como Sincronizar |
 | Triagem: "ainda não tem usuário ligado na origem" | Rodar a sincronização (traz os membros) ou conferir o e-mail no cadastro de Consultores |
 | Triagem: tarefa criada, prints pendentes | Botão *Reenviar prints*; se repetir, ver o erro na própria mensagem |
-| Consultor entra e vê "Acesso não liberado" | Falta a linha em `usuarios_sistema` com `papel = 'consultor'` e `consultor_id` (§13) |
+| Consultor entra e vê "Acesso não liberado" | Dar (ou reativar) o acesso em Consultores (§14) |
+| Consultores: "não tem e-mail no cadastro" | A sincronização de membros ainda não ligou a pessoa pelo e-mail do ClickUp; rodar a sincronização |
 | Consultor vê o Kanban vazio | Ele não é responsável por nenhuma tarefa das listas marcadas, ou o cadastro dele em Consultores não tem o usuário do ClickUp |
 | Varredura não roda sozinha | `select * from cron.job;` e `select * from net._http_response order by created desc limit 5;` |

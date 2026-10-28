@@ -24,3 +24,7 @@ verify_jwt = false
 # Criação da tarefa pela triagem (fase 4): exige gestor logado, conferido no código.
 [functions.clickup-criar]
 verify_jwt = false
+
+# Acessos pela tela Consultores (D75): exige gestor logado, conferido no código.
+[functions.acessos]
+verify_jwt = false
