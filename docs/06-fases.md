@@ -89,3 +89,7 @@ Ordem: criar no ClickUp → relatório → visão do consultor; cada item public
 - [~] Acessos pela tela Consultores (D75): migração `0013_acessos.sql` (regras, situação dos acessos, senha temporária) + testes
   `99_testes_0013.sql`; Edge Function `acessos`; coluna Acesso em `consultores.html`; botão **Senha** e troca obrigatória no 1º login (`comum.js`)
 - [ ] Publicar os acessos (`08-implantacao.md` §14) e dar acesso aos consultores do piloto pela tela
+- [~] Só pessoas acompanhadas nos painéis (D76): migração `0014_pessoas_acompanhadas.sql` (`vw_agendas`, `vw_demandas`, `vw_horas_dia`,
+  acesso só para marcado) + testes `99_testes_0014.sql`; Kanban só com demandas acompanhadas; Demandas com a agenda de não acompanhado
+  apagada; Consultores com a coluna "Acompanhar"
+- [ ] Publicar o D76 (`08-implantacao.md` §15)

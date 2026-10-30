@@ -113,7 +113,7 @@
     let ags;
     try {
       [demandas, ags] = await Promise.all([
-        buscarTudo(() => sb.from("vw_demandas").select("*").eq("selecao", "sincronizar").order("id")),
+        buscarTudo(() => sb.from("vw_demandas").select("*").eq("selecao", "sincronizar").eq("acompanhada", true).order("id")),   // D76: só pessoas marcadas
         buscarTudo(() => sb.from("vw_agendas").select("demanda_id,situacao_agenda,data_agenda,consultor_nome,minutos_agenda")
           .eq("incluida", true).order("id")),
       ]);
@@ -127,7 +127,7 @@
       const lista = agendasPor.get(d.id) ?? [];
       d._prox = lista.filter((a) => a.situacao_agenda === "agendada" && a.data_agenda)
         .sort((a, b) => texto(a.data_agenda, b.data_agenda))[0];
-      d._consultores = new Set([d.responsavel_nome, ...lista.map((a) => a.consultor_nome)].filter(Boolean));
+      d._consultores = new Set([d.responsavel_acompanhado ? d.responsavel_nome : null, ...lista.map((a) => a.consultor_nome)].filter(Boolean));
     }
     const opcoes = (id, valores, rotulo) => {
       $("#" + id).innerHTML = `<option value="">${rotulo}</option>` +

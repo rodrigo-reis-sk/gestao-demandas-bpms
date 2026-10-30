@@ -83,6 +83,8 @@ Leia este arquivo inteiro antes de qualquer trabalho neste projeto.
   quem clicou. Varredura usa a "conta da sincronização". Plano B: token único (D12).
 - **Listas** (D14, D27): toda lista descoberta entra como `a_analisar` (com regras automáticas) e não
   sincroniza até o gestor marcar. Entra **tudo** das listas marcadas, desde 01/01/2026 (D32, D33).
+- **Pessoas acompanhadas** (D76): a marcação de Consultores ("Acompanhar" = `consultores.sincronizar`) não filtra a
+  sincronização, filtra os **painéis**: agenda e horas de pessoa não marcada ficam fora do Kanban, das Horas e dos totais.
 - **Demanda e agenda** (D30): tarefa = demanda, subtarefa folha = agenda; a demanda é o ancestral mais alto
   que não é estrutura. Horas da agenda = estimativa, senão Período menos almoço (D34). O gestor escolhe as
   demandas que entram nos painéis (`tarefas.selecao`, D35). Kanban espelha o status do ClickUp (D36).
@@ -117,6 +119,8 @@ migração 0011, Edge Function `clickup-criar` (regra do legado em `_compartilha
 Relatório no painel de Horas (D73) e visão do consultor = Kanban + Horas com RLS (D74), §13: migração 0012 (`vw_horas_dia`, leitura do consultor), `horas.html`, `comum.js` e `kanban.html`.
 §13 **publicado** em 28/10/2026 (commit `1b2eaa1`). Acessos pela tela Consultores (D75) **prontos e testados localmente**, falta
 publicar (`08-implantacao.md` §14): migração 0013, Edge Function `acessos`, `consultores.html` e troca de senha em `comum.js`.
+Só pessoas acompanhadas nos painéis (D76, migração 0014, coluna "Acompanhar" em Consultores) **pronto e testado localmente**
+em 30/10/2026, falta publicar (`08-implantacao.md` §15).
 Prioridade do Rodrigo: **acelerar o MVP** com **bom gerenciamento das demandas**, sem amarrar nada novo ao ClickUp (D10).
 
 ## Como mexer em algo de uma fase já entregue

@@ -310,12 +310,12 @@
     const det = d.detalhamento ? `<div class="rot">Detalhamento</div><div>${esc(d.detalhamento).slice(0, 1500)}</div>` : "";
     if (!ags) return det + `<div class="suave">Carregando agendas…</div>`;
     return det + `<div class="rot">Agendas (${ags.length})</div>` + (ags.length ? ags.map((a) => {
-      const fora = a.selecao === "nao_sincronizar" || a.situacao_agenda === "nao_executada" || a.no_periodo === false;
+      const fora = a.selecao === "nao_sincronizar" || a.situacao_agenda === "nao_executada" || a.no_periodo === false || a.consultor_acompanhado === false;
       const ic = { realizada: "✓", agendada: "", atrasada: "!", nao_executada: "✕" }[a.situacao_agenda] ?? "";
       return `<div class="agenda ${fora ? "fora" : ""}">
         <span class="ic ${a.situacao_agenda}" title="${esc(a.status ?? "")}${a.situacao_agenda === "atrasada" ? " — data passada sem baixa" : ""}">${ic}</span>
         <span class="txt"><b>${dataCurta(a.data_agenda) || "sem data"}${a.consultor_nome ? " · " + esc(a.consultor_nome) : ""}</b>
-          <small>${esc(a.nome)}${a.periodo ? " · " + esc(a.periodo) : ""}${a.no_periodo === false ? " · antes da data de corte, fora da conta" : ""}</small></span>
+          <small>${esc(a.nome)}${a.periodo ? " · " + esc(a.periodo) : ""}${a.no_periodo === false ? " · antes da data de corte, fora da conta" : ""}${a.consultor_acompanhado === false ? " · pessoa não acompanhada (marque em Consultores), fora da conta" : ""}</small></span>
         <span class="h">${a.minutos_agenda ? horas(a.minutos_agenda) : "—"}</span>
         <button class="pequeno" data-agenda="${a.id}" data-sel="${a.selecao === "nao_sincronizar" ? "sincronizar" : "nao_sincronizar"}">${a.selecao === "nao_sincronizar" ? "Considerar" : "Não considerar"}</button>
       </div>`;

@@ -20,8 +20,9 @@ for f in "$DIR/00_supabase_simulado.sql" \
          "$RAIZ/migrations/0011_criacao_tarefa.sql" \
          "$RAIZ/migrations/0012_relatorio_e_consultor.sql" \
          "$RAIZ/migrations/0013_acessos.sql" \
+         "$RAIZ/migrations/0014_pessoas_acompanhadas.sql" \
          "$RAIZ/seed.sql" "$RAIZ/seed.sql" \
-         "$DIR/99_testes.sql" "$DIR/99_testes_fase1.sql" "$DIR/99_testes_0003.sql" "$DIR/99_testes_0004.sql" "$DIR/99_testes_0005.sql" "$DIR/99_testes_0006.sql" "$DIR/99_testes_0007.sql" "$DIR/99_testes_0008.sql" "$DIR/99_testes_0009.sql" "$DIR/99_testes_0010.sql" "$DIR/99_testes_0011.sql" "$DIR/99_testes_0012.sql" "$DIR/99_testes_0013.sql"; do
+         "$DIR/99_testes.sql" "$DIR/99_testes_fase1.sql" "$DIR/99_testes_0003.sql" "$DIR/99_testes_0004.sql" "$DIR/99_testes_0005.sql" "$DIR/99_testes_0006.sql" "$DIR/99_testes_0007.sql" "$DIR/99_testes_0008.sql" "$DIR/99_testes_0009.sql" "$DIR/99_testes_0010.sql" "$DIR/99_testes_0011.sql" "$DIR/99_testes_0012.sql" "$DIR/99_testes_0013.sql" "$DIR/99_testes_0014.sql"; do
   echo "### $(basename "$f")"
   (cd "$DIR" && psql -q -v ON_ERROR_STOP=1 -d teste_bpms -f "$f")
 done

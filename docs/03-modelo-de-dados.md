@@ -194,6 +194,14 @@ Rodados em Postgres 16 local, com `auth.uid()` e os papéis do Supabase simulado
 - Testes: `supabase/testes/99_testes_0009.sql` (chave, listas, limite por IP, gravação, validações, permissões, complemento,
   aprovar/recusar, ligação pelo código, bucket).
 
+## Migração 0014 — só pessoas acompanhadas nos painéis (30/10/2026, D76)
+
+- `pessoa_acompanhada(consultor, tem_responsavel)`: sem responsável → conta; senão só consultor marcado (`sincronizar`) e ativo.
+- `vw_agendas`: `incluida` passa a exigir pessoa acompanhada; nova coluna `consultor_acompanhado`; com dois responsáveis mostra o marcado.
+- `vw_demandas`: totais só das agendas que contam; novas colunas `responsavel_acompanhado` e `acompanhada` (o Kanban filtra por ela).
+- `vw_horas_dia`: tempo rastreado só de pessoa acompanhada. `preparar_acesso`: acesso de consultor só para pessoa marcada.
+- Testes: `supabase/testes/99_testes_0014.sql`.
+
 ## Migração 0013 — acessos pela tela Consultores (28/10/2026, D75)
 
 - `usuarios_sistema`: `trocar_senha` (senha temporária → a tela pede a nova), `acesso_por`, `acesso_em`.

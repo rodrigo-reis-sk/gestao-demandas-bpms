@@ -250,6 +250,23 @@ Testes (marcar ao conferir):
 - [ ] **Gestor:** como admin, escolher *Gestor* antes de *Dar acesso*. Um gestor que não é admin não vê essa escolha e não mexe em gestores.
 - [ ] **Senha:** o botão *Senha* do menu troca a própria senha.
 
+## 15. Só pessoas acompanhadas nos painéis (30/10/2026, D76)
+
+```powershell
+npx supabase@latest db push --linked        # aplica a 0014_pessoas_acompanhadas.sql
+git add CLAUDE.md docs supabase web
+git commit -m "Só pessoas acompanhadas nos painéis (D76)"
+git push
+```
+
+Testes (marcar ao conferir):
+
+- [ ] **Kanban:** a Elisangela (não marcada) não aparece mais em "Próxima" nem no filtro de consultor; as horas dela saem do card.
+- [ ] **Marcar:** em Consultores, marcar *Acompanhar* numa pessoa → recarregar o Kanban → as agendas dela aparecem (sem esperar a sincronização).
+      Desmarcar → somem de novo.
+- [ ] **Demandas:** abrir as agendas de uma demanda com gente não marcada → a agenda aparece apagada com "pessoa não acompanhada".
+- [ ] **Horas:** a pessoa não marcada some das linhas e do CSV.
+
 ## Problemas comuns
 
 | Sintoma | O que fazer |
@@ -266,5 +283,6 @@ Testes (marcar ao conferir):
 | Triagem: tarefa criada, prints pendentes | Botão *Reenviar prints*; se repetir, ver o erro na própria mensagem |
 | Consultor entra e vê "Acesso não liberado" | Dar (ou reativar) o acesso em Consultores (§14) |
 | Consultores: "não tem e-mail no cadastro" | A sincronização de membros ainda não ligou a pessoa pelo e-mail do ClickUp; rodar a sincronização |
+| Agenda/pessoa "sumiu" do Kanban ou das Horas | A pessoa não está marcada em Consultores → *Acompanhar* (D76) |
 | Consultor vê o Kanban vazio | Ele não é responsável por nenhuma tarefa das listas marcadas, ou o cadastro dele em Consultores não tem o usuário do ClickUp |
 | Varredura não roda sozinha | `select * from cron.job;` e `select * from net._http_response order by created desc limit 5;` |

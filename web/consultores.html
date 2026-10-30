@@ -15,8 +15,10 @@
 <body>
 <main>
   <h1>Consultores</h1>
-  <p class="sub">Pessoas do ClickUp (aparecem sozinhas, ligadas pelo e-mail). Marque quem aparece nos filtros e painéis e,
-    na coluna <b>Acesso</b>, dê login ao sistema: o consultor vê só o Kanban e as Horas dele (D74, D75).
+  <p class="sub">Pessoas do ClickUp (aparecem sozinhas, ligadas pelo e-mail). <b>Acompanhar</b> = pessoa que você acompanha:
+    só as agendas e horas das pessoas marcadas entram no Kanban e nas Horas; as demais ficam fora da conta (D76). A sincronização
+    continua trazendo tudo das listas marcadas, então marcar alguém depois mostra as agendas dele na hora.
+    Na coluna <b>Acesso</b>, dê login ao sistema: o consultor (marcado) vê só o Kanban e as Horas dele (D74, D75).
     Acesso de gestor só o admin dá.</p>
 
   <div class="cartao" id="senha-gerada" hidden>
@@ -33,7 +35,7 @@
       <input type="text" id="busca" placeholder="Buscar por nome ou e-mail" style="max-width:280px">
       <select id="filtro">
         <option value="ativos">Ativos</option>
-        <option value="sincronizando">Sincronizando</option>
+        <option value="sincronizando">Acompanhados</option>
         <option value="todos">Todos</option>
       </select>
       <span class="suave" id="resumo"></span>
@@ -74,6 +76,9 @@
     const escolha = ehAdmin
       ? `<select data-papel="${c.id}" aria-label="Tipo de acesso"><option value="consultor">Consultor</option><option value="gestor">Gestor</option></select>` : "";
     if (!c.email) return `<td><span class="suave" title="O login usa o e-mail do cadastro">sem e-mail</span></td>`;
+    if ((!a || !a.ativo) && !c.sincronizar && !ehAdmin) {
+      return `<td><span class="suave" title="Só pessoas acompanhadas recebem acesso de consultor (D76)">marque Acompanhar para dar acesso</span></td>`;
+    }
     if (!a || !a.ativo) {
       return `<td>${a ? `<span class="selo">desativado</span> ` : ""}<span class="acoes" style="display:inline-flex">${escolha}
         <button type="button" class="pequeno" data-acesso="dar_acesso" data-id="${c.id}">${a ? "Reativar" : "Dar acesso"}</button></span></td>`;
@@ -92,9 +97,9 @@
     const lista = consultores.filter((c) =>
       (filtro === "todos" || (filtro === "ativos" ? c.ativo : c.sincronizar)) &&
       (!busca || `${c.nome} ${c.email ?? ""} ${c.nome_externo ?? ""}`.toLowerCase().includes(busca)));
-    $("#resumo").textContent = `${consultores.filter((c) => c.sincronizar).length} sincronizando de ${consultores.length}`;
+    $("#resumo").textContent = `${consultores.filter((c) => c.sincronizar).length} acompanhados de ${consultores.length}`;
 
-    $("#tabela").innerHTML = `<tr><th>Nome</th><th>E-mail</th><th>Papel</th><th>No ClickUp</th><th>Sincronizar</th><th>Ativo</th><th>Acesso</th></tr>` +
+    $("#tabela").innerHTML = `<tr><th>Nome</th><th>E-mail</th><th>Papel</th><th>No ClickUp</th><th title="Pessoa que entra no Kanban e nas Horas (D76)">Acompanhar</th><th>Ativo</th><th>Acesso</th></tr>` +
       lista.map((c) => `<tr>
         <td>${esc(c.nome)}${c.nome_externo && c.nome_externo !== c.nome ? `<br><span class="suave">${esc(c.nome_externo)}</span>` : ""}</td>
         <td>${esc(c.email ?? "—")}</td>
@@ -119,7 +124,7 @@
     const c = consultores.find((x) => x.id === el.dataset.id);
     c[el.dataset.campo] = valor;
     if (el.dataset.campo === "sincronizar" && valor) {
-      aviso(`${c.nome} marcado. A próxima sincronização traz as tarefas dos últimos 90 dias.`, "ok");
+      aviso(`${c.nome} marcado: as agendas e horas dele já aparecem no Kanban e nas Horas.`, "ok");
     }
     desenhar();
   });
