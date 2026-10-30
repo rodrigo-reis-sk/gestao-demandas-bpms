@@ -71,6 +71,12 @@ Legenda: `[~]` código pronto e testado localmente (`rodar.sh` + telas no navega
 - [~] Triagem: área **Links do portal dos clientes** (criar, copiar, desativar/reativar, validade, último acesso), filtro por origem e selo "portal"
 - [ ] Publicar o portal: `db push` (0010), `functions deploy formulario`, `git push` (`08-implantacao.md` §11)
 
+## Ferramentas fora das fases (desvios, não mudam o escopo)
+- [~] **Personalização / Customização** (30/10/2026): tela `web/personalizacao.html` (menu "Personalização") + Edge Function
+  `clickup-consulta`. Consulta ao vivo no ClickUp com botão Atualizar, **nada gravado no banco**: tudo com a etapa
+  "Personalização / Customização" e, das 6 pessoas da lista (Airton, Felipe Salles, Iago, Jean Urban, Rodrigo, Jefferson —
+  lista no topo do código da tela), as tarefas com outra etapa para revisar; filtros e CSV. Publicar: `08-implantacao.md` §16
+
 ## Fase 4 — Criar no ClickUp e relatórios (decisões D65–D72, 26/10/2026)
 Ordem: criar no ClickUp → relatório → visão do consultor; cada item publicado e testado antes do próximo.
 - [~] Migração `0011_criacao_tarefa.sql`: reserva com trava (D70), resultado da criação, print enviado por anexo (D69),

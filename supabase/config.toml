@@ -28,3 +28,7 @@ verify_jwt = false
 # Acessos pela tela Consultores (D75): exige gestor logado, conferido no código.
 [functions.acessos]
 verify_jwt = false
+
+# Consultas ao vivo no ClickUp, sem gravar no banco (desvio, 30/10/2026): exige gestor logado.
+[functions.clickup-consulta]
+verify_jwt = false

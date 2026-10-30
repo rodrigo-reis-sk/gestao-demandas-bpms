@@ -267,6 +267,20 @@ Testes (marcar ao conferir):
 - [ ] **Demandas:** abrir as agendas de uma demanda com gente não marcada → a agenda aparece apagada com "pessoa não acompanhada".
 - [ ] **Horas:** a pessoa não marcada some das linhas e do CSV.
 
+## 16. Tela Personalização / Customização (30/10/2026, desvio — sem banco)
+
+Não tem migração. Só a função e a tela:
+
+```powershell
+npx supabase@latest functions deploy clickup-consulta --use-api
+git add CLAUDE.md docs supabase web
+git commit -m "Tela Personalização / Customização (consulta ao vivo no ClickUp)"
+git push
+```
+
+Conferir: menu **Personalização** → a consulta roda sozinha ao abrir (alguns segundos) → as 6 pessoas aparecem em verde
+(em laranja = e-mail não achado no workspace do ClickUp) → *Revisar* no topo, com a etapa atual → *Atualizar* refaz a consulta.
+
 ## Problemas comuns
 
 | Sintoma | O que fazer |

@@ -121,6 +121,7 @@ Relatório no painel de Horas (D73) e visão do consultor = Kanban + Horas com R
 publicar (`08-implantacao.md` §14): migração 0013, Edge Function `acessos`, `consultores.html` e troca de senha em `comum.js`.
 Só pessoas acompanhadas nos painéis (D76, migração 0014, coluna "Acompanhar" em Consultores) **pronto e testado localmente**
 em 30/10/2026, falta publicar (`08-implantacao.md` §15).
+Desvio fora das fases (30/10/2026): tela `personalizacao.html` + função `clickup-consulta` (consulta ao vivo, sem banco), §16.
 Prioridade do Rodrigo: **acelerar o MVP** com **bom gerenciamento das demandas**, sem amarrar nada novo ao ClickUp (D10).
 
 ## Como mexer em algo de uma fase já entregue

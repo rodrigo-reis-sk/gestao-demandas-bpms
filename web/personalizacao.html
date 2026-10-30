@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Personalização · Gestão BP-MS</title>
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700&display=swap">
+  <link rel="stylesheet" href="assets/estilo.css">
+  <script src="assets/tema.js"></script>
+  <script src="config.js"></script>
+  <style>
+    /* Consulta ao vivo no ClickUp (desvio do escopo, 30/10/2026): nada é gravado no banco. */
+    .barra { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+    .barra label { font-size: .82rem; color: var(--suave); display: flex; align-items: center; gap: 6px; margin: 0; }
+    .barra input[type=date] { width: auto; }
+    .barra input[type=search] { max-width: 260px; }
+    .barra .resumo { color: var(--suave); font-size: .84rem; margin-left: auto; }
+    .pessoas { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 12px; font-size: .8rem; }
+    table.lista { font-size: .86rem; }
+    table.lista td { vertical-align: top; }
+    table.lista td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    table.lista td small { display: block; color: var(--suave); font-size: .76rem; }
+    tr.revisar td:first-child { border-left: 3px solid var(--alerta); }
+    tr.personalizacao td:first-child { border-left: 3px solid var(--acento); }
+    @media (max-width: 640px) { .barra .resumo { margin-left: 0; width: 100%; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Personalização / Customização</h1>
+  <p class="sub">Consulta <b>direto no ClickUp</b> (espaço PMO BP-MS), sem gravar nada no sistema. Mostra
+    <b>tudo que está com a etapa Personalização / Customização</b> e, das pessoas abaixo, as tarefas com
+    <b>outra etapa (ou vazia)</b>, para revisar. Tarefas-estrutura (1-Atendimento Base, mês) ficam de fora.</p>
+
+  <div class="barra">
+    <label>Tarefas das pessoas alteradas desde <input type="date" id="desde" value="2026-01-01"></label>
+    <label><input type="checkbox" id="fechadas"> incluir concluídas</label>
+    <button type="button" class="primario" id="atualizar">↻ Atualizar</button>
+    <button type="button" id="csv">Exportar CSV</button>
+    <span class="resumo" id="resumo">—</span>
+  </div>
+  <div class="pessoas" id="pessoas"></div>
+  <div class="barra">
+    <select id="grupo" aria-label="Situação">
+      <option value="">Todas</option>
+      <option value="revisar">Revisar etapa</option>
+      <option value="personalizacao">Em Personalização</option>
+    </select>
+    <select id="responsavel" aria-label="Responsável"><option value="">Todos os responsáveis</option></select>
+    <select id="cliente" aria-label="Cliente"><option value="">Todos os clientes</option></select>
+    <select id="etapa" aria-label="Etapa atual"><option value="">Todas as etapas</option></select>
+    <input type="search" id="busca" placeholder="Buscar tarefa, lista…" aria-label="Buscar">
+  </div>
+
+  <div class="cartao tabela-rolagem" style="padding:0"><table class="lista" id="tabela">
+    <tbody><tr><td class="suave">Clique em <b>Atualizar</b> para consultar o ClickUp.</td></tr></tbody></table></div>
+</main>
+<script type="module">
+  import { esc, $, exigirLogin, montarMenu, aviso, chamarFuncao, dataHora, horas } from "./assets/comum.js";
+
+  const { usuario } = await exigirLogin();
+  await montarMenu(usuario);
+
+  // Pessoas cujas tarefas deveriam estar em Personalização (pedido do Rodrigo, 30/10/2026). E-mail = o do ClickUp.
+  const PESSOAS = [
+    ["Airton", "airton.schmitz@sankhya.com.br"],
+    ["Felipe Salles", "felipe.lopes@sankhya.com.br"],
+    ["Iago Proença", "iago.proenca@sankhya.com.br"],
+    ["Jean Urban", "jean.urban@sankhya.com.br"],
+    ["Rodrigo Reis", "reis.c.rodrigo@gmail.com"],
+    ["Jefferson", "jeferson.alves@sankhya.com.br"],
+  ];
+
+  const texto = (a, b) => String(a ?? "").localeCompare(String(b ?? ""), "pt-BR", { numeric: true, sensitivity: "base" });
+  const data = (v) => v ? new Date(v).toLocaleDateString("pt-BR", { timeZone: "America/Campo_Grande" }) : "";
+  let itens = [];
+
+  function mostrarPessoas(encontradas) {
+    $("#pessoas").innerHTML = PESSOAS.map(([nome, email]) => {
+      const p = encontradas?.find((x) => x.email === email);
+      const selo = !encontradas ? "" : p?.id ? "ok" : "alerta";
+      return `<span class="selo ${selo}" title="${esc(email)}${encontradas && !p?.id ? " — e-mail não achado no workspace" : ""}">${esc(nome)}${encontradas && !p?.id ? " (não achado)" : ""}</span>`;
+    }).join("");
+  }
+  mostrarPessoas(null);
+
+  async function atualizar() {
+    const b = $("#atualizar");
+    b.disabled = true; b.textContent = "Consultando o ClickUp…";
+    $("#resumo").textContent = "Consultando… (pode levar alguns segundos)";
+    try {
+      const r = await chamarFuncao("clickup-consulta", {
+        acao: "personalizacao", emails: PESSOAS.map((p) => p[1]),
+        desde: $("#desde").value || "2026-01-01", incluir_fechadas: $("#fechadas").checked,
+      });
+      itens = r.itens ?? [];
+      mostrarPessoas(r.pessoas);
+      const opcoes = (id, valores, rotulo) => {
+        const atual = $("#" + id).value;
+        $("#" + id).innerHTML = `<option value="">${rotulo}</option>` +
+          [...new Set(valores.filter(Boolean))].sort(texto).map((v) => `<option>${esc(v)}</option>`).join("");
+        $("#" + id).value = [...$("#" + id).options].some((o) => o.value === atual) ? atual : "";
+      };
+      opcoes("responsavel", itens.flatMap((i) => i.responsaveis.map((p) => p.nome)), "Todos os responsáveis");
+      opcoes("cliente", itens.map((i) => i.cliente), "Todos os clientes");
+      opcoes("etapa", itens.map((i) => i.etapa ?? "(sem etapa)"), "Todas as etapas");
+      $("#resumo").dataset.base = `consultado em ${dataHora(r.consultado_em)} · ${r.segundos}s · ${r.chamadas_api} chamada(s) à API`;
+      desenhar();
+    } catch (e) {
+      aviso(e.message, "erro");
+      $("#resumo").textContent = "Erro na consulta.";
+    } finally {
+      b.disabled = false; b.textContent = "↻ Atualizar";
+    }
+  }
+
+  function filtrados() {
+    const g = $("#grupo").value, resp = $("#responsavel").value, cli = $("#cliente").value, et = $("#etapa").value;
+    const busca = $("#busca").value.trim().toLowerCase();
+    return itens.filter((i) => (!g || i.grupo === g)
+      && (!resp || i.responsaveis.some((p) => p.nome === resp))
+      && (!cli || i.cliente === cli)
+      && (!et || (i.etapa ?? "(sem etapa)") === et)
+      && (!busca || [i.nome, i.lista, i.cliente, i.status].some((v) => String(v ?? "").toLowerCase().includes(busca))))
+      .sort((a, b) => (a.grupo === "revisar" ? 0 : 1) - (b.grupo === "revisar" ? 0 : 1) || texto(b.atualizada, a.atualizada));
+  }
+
+  function desenhar() {
+    const l = filtrados();
+    const rev = itens.filter((i) => i.grupo === "revisar").length;
+    $("#resumo").textContent = `${itens.length - rev} em Personalização · ${rev} para revisar · ${l.length} na lista · ${$("#resumo").dataset.base ?? ""}`;
+    if (!itens.length) { $("#tabela").innerHTML = `<tbody><tr><td class="suave">Nada encontrado.</td></tr></tbody>`; return; }
+    $("#tabela").innerHTML = `<thead><tr><th>Situação</th><th>Tarefa</th><th>Cliente · lista</th><th>Status</th>
+      <th>Responsáveis</th><th>Vencimento</th><th class="num">Estim. / rastr.</th><th>Atualizada</th></tr></thead><tbody>` +
+      l.map((i) => `<tr class="${i.grupo}">
+        <td>${i.grupo === "personalizacao" ? `<span class="selo ok">Personalização</span>`
+          : `<span class="selo alerta">Revisar</span><small>etapa: ${esc(i.etapa ?? "vazia")}</small>${i.mae_na_etapa ? "<small>mãe em Personalização</small>" : ""}`}</td>
+        <td>${i.url ? `<a href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.nome)}</a>` : esc(i.nome)}</td>
+        <td>${esc(i.cliente ?? "—")}<small>${esc(i.lista ?? "")}</small></td>
+        <td>${esc(i.status ?? "")}</td>
+        <td>${esc(i.responsaveis.map((p) => p.nome).join(", ") || "—")}</td>
+        <td>${esc(data(i.data_vencimento))}</td>
+        <td class="num">${horas(i.minutos_estimados ?? 0)}<small>${horas(i.minutos_registrados ?? 0)} rastr.</small></td>
+        <td>${esc(data(i.atualizada))}</td>
+      </tr>`).join("") + "</tbody>";
+  }
+
+  // CSV do que está na lista (";" e vírgula decimal, abre no Excel)
+  function exportarCsv() {
+    const l = filtrados();
+    if (!l.length) { aviso("Nada para exportar.", "erro"); return; }
+    const h = (m) => (Math.round((m ?? 0) / 6) / 10).toLocaleString("pt-BR", { minimumFractionDigits: 1 });
+    const campo = (v) => { const s = String(v ?? ""); return /[;"\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+    const linhas = [["Situação", "Etapa", "Tarefa", "Cliente", "Lista", "Status", "Responsáveis", "Vencimento", "Estimativa (h)",
+      "Rastreado (h)", "Atualizada", "Mãe em Personalização", "Link"].join(";"),
+      ...l.map((i) => [i.grupo === "revisar" ? "Revisar" : "Personalização", i.etapa ?? "", i.nome, i.cliente, i.lista, i.status,
+        i.responsaveis.map((p) => p.nome).join(", "), data(i.data_vencimento), h(i.minutos_estimados), h(i.minutos_registrados),
+        data(i.atualizada), i.mae_na_etapa ? "sim" : "", i.url].map(campo).join(";"))];
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob(["﻿" + linhas.join("\r\n")], { type: "text/csv;charset=utf-8" }));
+    a.download = `personalizacao_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+
+  $("#atualizar").onclick = atualizar;
+  $("#csv").onclick = exportarCsv;
+  for (const id of ["grupo", "responsavel", "cliente", "etapa"]) $("#" + id).onchange = desenhar;
+  $("#busca").oninput = desenhar;
+  atualizar();      // consulta ao abrir a tela
+</script>
+</body>
+</html>

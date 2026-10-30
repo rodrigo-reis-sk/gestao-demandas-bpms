@@ -29,7 +29,7 @@ done
 # Edge Functions: testes de tradução e do cliente da API (precisa do Deno)
 if command -v deno >/dev/null; then
   echo "### funcoes.test.ts, formulario.test.ts e criacao.test.ts"
-  (cd "$RAIZ/.." && deno test -q --allow-write=supabase/testes --allow-env=CLICKUP_TEAM_ID supabase/testes/funcoes.test.ts supabase/testes/formulario.test.ts supabase/testes/criacao.test.ts supabase/testes/acessos.test.ts)
+  (cd "$RAIZ/.." && deno test -q --allow-write=supabase/testes --allow-env=CLICKUP_TEAM_ID supabase/testes/funcoes.test.ts supabase/testes/formulario.test.ts supabase/testes/criacao.test.ts supabase/testes/acessos.test.ts supabase/testes/consulta.test.ts)
   echo "### 99_testes_traducao.sql"
   (cd "$DIR" && psql -q -v ON_ERROR_STOP=1 -d teste_bpms -f 99_testes_traducao.sql)
 else

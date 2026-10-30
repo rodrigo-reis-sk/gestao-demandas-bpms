@@ -97,6 +97,7 @@ const PAGINAS = [
   ["triagem.html", "Triagem"],
   ["kanban.html", "Kanban"],
   ["horas.html", "Horas"],
+  ["personalizacao.html", "Personalização"],     // consulta ao vivo no ClickUp (desvio, 30/10/2026)
   ["consultores.html", "Consultores"],
   ["sincronizacoes.html", "Log"],
   ["perfil.html", "Meu perfil"],

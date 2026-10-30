@@ -174,6 +174,37 @@ export class ClienteClickUp {
     return todos;
   }
 
+  /**
+   * Busca de tarefas do workspace para consultas ao vivo (sem gravar no banco), paginada.
+   * campos = filtro de campo personalizado da API ([{ field_id, operator, value }]).
+   */
+  async buscarTarefas(equipeId: string, filtro: {
+    espacos: string[]; responsaveis?: string[]; campos?: unknown[]; desde?: Date; incluirFechadas?: boolean; maxPaginas?: number;
+  }) {
+    const todas: any[] = [];
+    for (let pagina = 0; pagina < (filtro.maxPaginas ?? 30); pagina++) {
+      const resp = await this.chamar("GET", `/team/${equipeId}/task`, {
+        page: pagina,
+        space_ids: filtro.espacos,
+        assignees: filtro.responsaveis?.length ? filtro.responsaveis : undefined,
+        custom_fields: filtro.campos?.length ? JSON.stringify(filtro.campos) : undefined,
+        date_updated_gt: filtro.desde ? filtro.desde.getTime() : undefined,
+        include_closed: !!filtro.incluirFechadas,
+        subtasks: true,
+        order_by: "updated",
+      });
+      const tarefas = resp.tasks ?? [];
+      todas.push(...tarefas);
+      if (tarefas.length === 0 || resp.last_page !== false) break;
+    }
+    return todas;
+  }
+
+  /** Campos personalizados de uma lista (com as opções dos dropdowns). */
+  async camposDaLista(listaId: string): Promise<any[]> {
+    return (await this.chamar("GET", `/list/${listaId}/field`)).fields ?? [];
+  }
+
   // ---------------------------------------------------------------- criação de tarefa (fase 4)
 
   /** Tarefas de uma lista (sem subtarefas, sem fechadas), uma página de até 100. */

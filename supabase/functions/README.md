@@ -11,6 +11,7 @@ São as **únicas** peças com "clickup" no nome: no dia em que sairmos do Click
 | `formulario` | 3 | pronta (falta publicar) | Formulário do consultor e complemento (D57–D60): confere a chave do link, campo-armadilha e limite por IP; confere o tipo real dos prints, guarda no bucket privado `evidencias` e grava o chamado. Portal do cliente (D62–D64): ações `portal` (lista do cliente) e `abrir_portal` (chamado do cliente) |
 | `clickup-criar` | 4 | pronta (falta publicar) | Botão "Aprovar e criar no ClickUp" da triagem (D65–D70): token do gestor que clicou (`ler_token_usuario`; reserva `CLICKUP_TOKEN`), regra do legado (acesso à pasta, `1-Atendimento Base`, mês, tarefa `CH-xxxxx - Título` com campos, dev + consultor, descrição) e prints anexados; ação `reenviar_prints` |
 | `acessos` | 4 | pronta (falta publicar) | Tela Consultores (D75): cria/reativa o login no Supabase Auth com o e-mail do cadastro e senha temporária, nova senha e tirar acesso; regras no banco (0013). Sem nome de ferramenta externa: não é integração |
+| `clickup-consulta` | desvio | pronta (falta publicar) | Consulta **ao vivo** no ClickUp, sem gravar no banco (tela `personalizacao.html`): tudo com a etapa "Personalização / Customização" + tarefas das pessoas da lista com outra etapa (revisar). Regra em `_compartilhado/clickup-consulta.ts` (teste `consulta.test.ts`) |
 
 `_compartilhado/`: `base.ts` (banco, login, CORS), `clickup-api.ts` (chamadas com limite de cota, tempo
 máximo, repetição e trava de páginas — lições do legado), `clickup-traducao.ts` (formato do ClickUp →
